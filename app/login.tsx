@@ -57,9 +57,12 @@ export default function LoginScreen() {
         body: JSON.stringify({ email, password })
       });
       if (!response.ok) throw new Error("Usuário ou senha inválidos");
-      const data = await response.json();
-      // Aqui você pode salvar o token e navegar para a tela principal
-      Alert.alert("Login realizado com sucesso!");
+        const data = await response.json();
+        if (!data.permissions || !data.permissions.includes("DOCUMENTOS")) {
+          Alert.alert("Permissão insuficiente", "Você não tem permissão para digitalizar documentos");
+          return;
+        }
+        // Aqui você pode salvar o token e navegar para a tela principal
     } catch (err) {
   const msg = err instanceof Error ? err.message : "Erro desconhecido";
   Alert.alert("Erro", msg);
