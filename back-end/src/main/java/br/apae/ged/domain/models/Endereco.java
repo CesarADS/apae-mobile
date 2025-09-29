@@ -4,14 +4,13 @@ package br.apae.ged.domain.models;
 import br.apae.ged.application.dto.aluno.AlunoRequestDTO;
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @ToString
-@SuperBuilder
+@Builder
 @Entity(name = "tb_endereco")
 public class Endereco extends EntityID{
 

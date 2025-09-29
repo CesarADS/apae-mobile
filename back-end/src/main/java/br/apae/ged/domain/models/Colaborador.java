@@ -2,18 +2,20 @@ package br.apae.ged.domain.models;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrimaryKeyJoinColumn;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@SuperBuilder
-@Entity(name = "tb_colaborador")
+@Entity
+@Table(name = "tb_colaborador")
 @PrimaryKeyJoinColumn(name = "id")
 public class Colaborador extends Pessoa {
 
     private String cargo;
-
 }

@@ -1,10 +1,11 @@
 package br.apae.ged.application.dto.document;
 
+import br.apae.ged.domain.models.Alunos;
+import br.apae.ged.domain.models.Colaborador;
 import br.apae.ged.domain.models.Document;
-import br.apae.ged.domain.models.Pessoa; // Importe a entidade base
+import br.apae.ged.domain.models.Pessoa;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Base64;
 
 public record DocumentResponseDTO(
         Long id,
@@ -14,17 +15,24 @@ public record DocumentResponseDTO(
         LocalDateTime dataUpload,
         LocalDateTime dataDownload,
         LocalDate dataDocumento,
-        PessoaResponseDTO pessoa, // Campo renomeado para refletir a entidade base
+        PessoaResponseDTO pessoa,
         TipoDocumentoResponseDTO tipoDocumento) {
 
-    // Record interno agora representa uma Pessoa genérica
     public record PessoaResponseDTO(
             Long id,
-            String nome) {
+            String nome,
+            String tipo) {
         public static PessoaResponseDTO fromEntity(Pessoa pessoa) {
             if (pessoa == null)
                 return null;
-            return new PessoaResponseDTO(pessoa.getId(), pessoa.getNome());
+
+            String tipo = "Pessoa";
+            if (pessoa instanceof Alunos) {
+                tipo = "Aluno";
+            } else if (pessoa instanceof Colaborador) {
+                tipo = "Colaborador";
+            }
+            return new PessoaResponseDTO(pessoa.getId(), pessoa.getNome(), tipo);
         }
     }
 
@@ -38,22 +46,19 @@ public record DocumentResponseDTO(
         }
     }
 
-    // Método de fábrica para criar o DTO a partir da entidade Document com conteúdo
-    public static DocumentResponseDTO fromEntity(Document document, byte[] documentoBytes) {
-        String base64Content = (documentoBytes != null) ? Base64.getEncoder().encodeToString(documentoBytes) : null;
+    public static DocumentResponseDTO fromEntity(Document document) {
         return new DocumentResponseDTO(
                 document.getId(),
                 document.getTitulo(),
                 document.getTipoConteudo(),
-                base64Content,
+                document.getConteudo(),
                 document.getDataUpload(),
                 document.getDataDownload(),
                 document.getDataDocumento(),
-                PessoaResponseDTO.fromEntity(document.getPessoa()), // Utiliza o novo relacionamento
+                PessoaResponseDTO.fromEntity(document.getPessoa()),
                 TipoDocumentoResponseDTO.fromEntity(document.getTipoDocumento()));
     }
 
-    // Método de fábrica para criar o DTO sem o conteúdo do arquivo
     public static DocumentResponseDTO fromEntityWithoutContent(Document document) {
         return new DocumentResponseDTO(
                 document.getId(),
@@ -63,7 +68,7 @@ public record DocumentResponseDTO(
                 document.getDataUpload(),
                 document.getDataDownload(),
                 document.getDataDocumento(),
-                PessoaResponseDTO.fromEntity(document.getPessoa()), // Utiliza o novo relacionamento
+                PessoaResponseDTO.fromEntity(document.getPessoa()),
                 TipoDocumentoResponseDTO.fromEntity(document.getTipoDocumento()));
     }
 }

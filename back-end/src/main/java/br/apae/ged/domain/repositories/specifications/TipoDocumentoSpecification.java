@@ -7,13 +7,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class TipoDocumentoSpecification {
 
-
-
-
     public static Specification<TipoDocumento> isAtivo() {
         return (root, query, criteriaBuilder) -> criteriaBuilder.isTrue(root.get("isAtivo"));
     }
-
 
     public static Specification<TipoDocumento> byNome(String nome) {
         if (nome == null || nome.isBlank()) {
@@ -21,5 +17,17 @@ public class TipoDocumentoSpecification {
         }
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.like(criteriaBuilder.lower(root.get("nome")), "%" + nome.toLowerCase() + "%");
+    }
+
+    public static Specification<TipoDocumento> isGuardaPermanente() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.isTrue(root.get("guardaPermanente"));
+    }
+
+    public static Specification<TipoDocumento> isNotInstitucional() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("institucional"));
+    }
+
+    public static Specification<TipoDocumento> isInstitucional() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.isTrue(root.get("institucional"));
     }
 }

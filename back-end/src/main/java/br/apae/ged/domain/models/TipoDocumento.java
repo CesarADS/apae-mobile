@@ -38,7 +38,16 @@ public class TipoDocumento extends EntityID {
 
         @Column(name = "data_registro")
         private LocalDateTime dataRegistro;
+        @Column
+        private boolean guardaPermanente;
 
+        @Column
+        private boolean institucional;
+
+        @Column
+        private boolean documentoAssinavel;
+
+        @Column boolean podeGerarDocumento;
 
         public TipoDocumento(String nome, Integer validade, User usuario) {
                 this.nome = nome;
@@ -62,5 +71,9 @@ public class TipoDocumento extends EntityID {
                 this.setValidade(request.validade());
                 this.setUsuarioAlteracao(usuario);
                 this.setDataAlteracao(LocalDateTime.now());
+                this.setGuardaPermanente(request.guardaPermanente());
+                this.setInstitucional(request.institucional());
+                this.setDocumentoAssinavel(request.documentoAssinavel());
+                this.setPodeGerarDocumento(request.podeGerarDocumento());
         }
 }

@@ -18,6 +18,5 @@ public record AlunoRequestDTO(
         int numero,
         String complemento,
         String cep,
-        String ibge,
-        String laudo
+        String ibge
 ) {}

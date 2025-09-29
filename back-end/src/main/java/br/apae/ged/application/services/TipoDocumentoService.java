@@ -111,4 +111,29 @@ public class TipoDocumentoService {
                 .map(TipoDocumentoResponse::new)
                 .collect(Collectors.toList());
     }
+
+    public Page<TipoDocumentoResponse> buscarTodosGuardaPermanente(Pageable pagina, String termoBusca) {
+        Specification<TipoDocumento> spec = Specification.where(TipoDocumentoSpecification.isAtivo())
+                .and(TipoDocumentoSpecification.isGuardaPermanente())
+                .and(TipoDocumentoSpecification.isNotInstitucional());
+
+        if (termoBusca != null && !termoBusca.isBlank()) {
+            spec = spec.and(TipoDocumentoSpecification.byNome(termoBusca));
+        }
+        return tipoDocumentoRepository.findAll(spec, pagina)
+                .map(TipoDocumentoResponse::new);
+    }
+
+    public Page<TipoDocumentoResponse> buscarTodosInstitucional(Pageable pagina, String termoBusca) {
+        Specification<TipoDocumento> spec = Specification.where(TipoDocumentoSpecification.isAtivo())
+                .and(TipoDocumentoSpecification.isInstitucional());
+
+        if (termoBusca != null && termoBusca.isBlank()) {
+            spec = spec.and(TipoDocumentoSpecification.byNome(termoBusca));
+        }
+
+        return tipoDocumentoRepository.findAll(spec, pagina)
+                .map(TipoDocumentoResponse::new);
+    }
+
 }

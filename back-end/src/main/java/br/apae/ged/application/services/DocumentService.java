@@ -1,8 +1,10 @@
 package br.apae.ged.application.services;
 
+import br.apae.ged.application.dto.document.GerarDocumentoPessoaDTO;
 import br.apae.ged.application.dto.document.DocumentRequestDTO;
 import br.apae.ged.application.dto.document.DocumentResponseDTO;
 import br.apae.ged.application.dto.document.DocumentUploadResponseDTO;
+import br.apae.ged.application.dto.document.DocumentDTO;
 import br.apae.ged.application.exceptions.NotFoundException;
 import br.apae.ged.application.exceptions.ValidationException;
 import br.apae.ged.domain.models.Document;
@@ -25,17 +27,38 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Base64;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class DocumentService {
 
     private final DocumentRepository documentRepository;
-    private final PessoaRepository pessoaRepository;
     private final TipoDocumentoRepository tipoDocumentoRepository;
+    private final PessoaRepository pessoaRepository;
+    private final GeracaoPdfService pdfService;
 
-    public DocumentUploadResponseDTO save(DocumentRequestDTO dto, Long pessoaId) throws IOException {
+        /**
+         * Retorna todos os documentos enviados pelo usuário logado
+         */
+        public List<DocumentDTO> listarMeusDocumentos() {
+                var usuario = AuthenticationUtil.retriveAuthenticatedUser();
+                var docs = documentRepository.findByUploadedBy_Id(usuario.getId());
+                return docs.stream().map(doc -> new DocumentDTO(
+                        doc.getId(),
+                        doc.getTitulo(),
+                        doc.getTipoDocumento() != null ? doc.getTipoDocumento().getNome() : null,
+                        doc.getDataUpload(),
+                        doc.isLast(),
+                        doc.getUploadedBy() != null ? doc.getUploadedBy().getNome() : null
+                )).toList();
+        }
+
+    public byte[] gerarPdf(GerarDocumentoPessoaDTO dto) throws IOException {
+        return pdfService.generatePdf(dto);
+    }
+
+    public DocumentUploadResponseDTO upload(DocumentRequestDTO dto, Long pessoaID) throws IOException {
         MultipartFile arquivo = dto.file();
         if (arquivo == null || arquivo.isEmpty()) {
             throw new ValidationException("O arquivo está vazio");
@@ -44,18 +67,20 @@ public class DocumentService {
             throw new ValidationException("A data do documento é obrigatória.");
         }
 
-        Pessoa pessoa = pessoaRepository.findById(pessoaId)
-                .orElseThrow(() -> new NotFoundException("Pessoa (Aluno ou Colaborador) não encontrada."));
+        Pessoa pessoa = pessoaRepository.findById(pessoaID)
+                .orElseThrow(() -> new NotFoundException("Pessoa com ID " + pessoaID + " não encontrada."));
 
         var user = AuthenticationUtil.retriveAuthenticatedUser();
         TipoDocumento tipoDoc = tipoDocumentoRepository.findByNome(dto.tipoDocumento())
                 .orElseThrow(() -> new NotFoundException(
                         "Tipo de Documento com o nome '" + dto.tipoDocumento() + "' não encontrado."));
 
-        LocalDate dataDoDocumento = dto.dataDocumento();
-        String dataFormatada = dataDoDocumento.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"));
-        String novoTitulo = String.format("%s - %s - %s", pessoa.getNome(), tipoDoc.getNome(), dataFormatada);
-
+        String dataFormatada = dto.dataDocumento().format(
+                java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+        String novoTitulo = String.format("%s - %s - %s",
+                pessoa.getNome(),
+                tipoDoc.getNome(),
+                dataFormatada);
         String conteudoEmBase64 = Base64.getEncoder().encodeToString(arquivo.getBytes());
         String tipoDoConteudo = arquivo.getContentType();
 
@@ -78,14 +103,61 @@ public class DocumentService {
                 "Upload de documento efetuado com sucesso!");
     }
 
-    public Page<DocumentResponseDTO> visualizarTodos(String termoBusca, Pageable pageable) {
-        Specification<Document> specFinal = Specification.where(DocumentSpecification.isLast())
-                .and(DocumentSpecification.isAtivo());
+    public DocumentUploadResponseDTO gerarESalvarPdf(GerarDocumentoPessoaDTO dto) throws IOException {
+        byte[] pdfBytes = gerarPdf(dto);
+        Document documentoSalvo = salvarDocumentoGerado(dto, pdfBytes);
+        return new DocumentUploadResponseDTO(documentoSalvo.getId(), "Documento gerado e salvo com sucesso!");
+    }
 
-        if (termoBusca != null && !termoBusca.isBlank()) {
-            specFinal = specFinal.and(DocumentSpecification.byTermoBusca(termoBusca));
+    private Document salvarDocumentoGerado(GerarDocumentoPessoaDTO dto, byte[] pdfBytes) {
+        if (dto.pessoaId() == null) {
+            throw new ValidationException("O ID da pessoa é obrigatório.");
         }
 
+        Pessoa pessoa = pessoaRepository.findById(dto.pessoaId())
+                .orElseThrow(() -> new NotFoundException("Pessoa com ID " + dto.pessoaId() + " não encontrada."));
+
+        TipoDocumento tipoDoc = tipoDocumentoRepository.findByNome(dto.tipoDocumento())
+                .orElseThrow(() -> new NotFoundException(
+                        "Tipo de Documento com o nome '" + dto.tipoDocumento() + "' não encontrado."));
+
+        var user = AuthenticationUtil.retriveAuthenticatedUser();
+
+        String conteudoEmBase64 = Base64.getEncoder().encodeToString(pdfBytes);
+        String tipoDoConteudo = "application/pdf";
+
+        LocalDate dataDoDocumento = LocalDate.now();
+        String dataFormatada = dataDoDocumento.format(
+                java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+
+        String novoTitulo = String.format("%s - %s - %s",
+                pessoa.getNome(),
+                tipoDoc.getNome(),
+                dataFormatada);
+        Document novoDocumento = Document.builder()
+                .titulo(novoTitulo)
+                .tipoDocumento(tipoDoc)
+                .pessoa(pessoa)
+                .uploadedBy(user)
+                .conteudo(conteudoEmBase64)
+                .tipoConteudo(tipoDoConteudo)
+                .dataDocumento(dataDoDocumento)
+                .isLast(true)
+                .isAtivo(true)
+                .build();
+
+        return documentRepository.save(novoDocumento);
+    }
+
+    public Page<DocumentResponseDTO> listarPorPessoa(Long pessoaId, String termoBusca, Pageable pageable) {
+        Specification<Document> specFinal = Specification.where(DocumentSpecification.isLast())
+                .and(DocumentSpecification.isAtivo())
+                .and((root, query, cb) -> cb.equal(root.get("pessoa").get("id"), pessoaId));
+        if (termoBusca != null && !termoBusca.isBlank()) {
+            Specification<Document> specBuscaTitulo = (root, query, criteriaBuilder) -> criteriaBuilder
+                    .like(criteriaBuilder.lower(root.get("titulo")), "%" + termoBusca.toLowerCase() + "%");
+            specFinal = specFinal.and(specBuscaTitulo);
+        }
         Pageable pageableComOrdenacao = pageable;
         if (pageable.getSort().isUnsorted()) {
             pageableComOrdenacao = PageRequest.of(
@@ -101,8 +173,7 @@ public class DocumentService {
     public DocumentResponseDTO visualizarUm(Long id) {
         var documento = documentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Não foi possível encontrar o documento"));
-        byte[] imagem = Base64.getDecoder().decode(documento.getConteudo());
-        return DocumentResponseDTO.fromEntity(documento, imagem);
+        return DocumentResponseDTO.fromEntity(documento);
     }
 
     public DocumentResponseDTO update(Long id, DocumentRequestDTO dto) throws IOException {

@@ -14,4 +14,5 @@ public interface TipoDocumentoRepository extends JpaRepository<TipoDocumento, Lo
     Optional<TipoDocumento> findByNome(String nome);
     Optional<TipoDocumento> findByNomeIgnoreCase(String nome);
     List<TipoDocumento> findAllByIsAtivoTrueOrderByNomeAsc();
+
 }
