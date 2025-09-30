@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 const API_URL = "https://gedapae.com.br/api/user/login"; // Tratar como tratar com variável de ambiente em um local só
 
@@ -182,8 +182,13 @@ export default function LoginScreen() {
   };
 
     return (
-      <View style={styles.container}>
-        <Image source={require("../assets/images/logo.png")} style={styles.logo} resizeMode="contain" />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 20}
+      >
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <Image source={require("../assets/images/logo.png")} style={styles.logo} resizeMode="contain" />
         <Text style={styles.title}>Bem-vindo ao GED APAE</Text>
         <TextInput
           style={styles.input}
@@ -283,7 +288,8 @@ export default function LoginScreen() {
             </View>
           </View>
         )}
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
 }
 
