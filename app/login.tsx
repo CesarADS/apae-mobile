@@ -1,350 +1,329 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import React, { useState } from "react";
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { router } from 'expo-router';
+import React, { useEffect } from 'react';
+import { Image, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-const API_URL = "https://gedapae.com.br/api/user/login"; // Tratar como tratar com variável de ambiente em um local só
+import {
+  Button,
+  Container,
+  IconButton,
+  Input,
+  Modal,
+  QRCodeScanner,
+  Typography
+} from '../components';
+import { useAuth, usePasswordRecovery, useQRCode } from '../hooks';
 
 export default function LoginScreen() {
-  // Hooks para redefinição de senha
-  const [resetVisible, setResetVisible] = useState(false);
-  const [resetCode, setResetCode] = useState("");
-  const [resetPassword, setResetPassword] = useState("");
-  const [resetLoading, setResetLoading] = useState(false);
+  const [autoLoginTriggered, setAutoLoginTriggered] = React.useState(false);
+  
+  const {
+    email,
+    password,
+    loading,
+    error,
+    setEmail,
+    setPassword,
+    login,
+    clearError,
+  } = useAuth();
 
-  // Função para enviar redefinição de senha
-  const handleResetPassword = async () => {
-    if (!forgotEmail || !resetCode || !resetPassword) {
-      Alert.alert("Erro", "Preencha todos os campos.");
-      return;
-    }
-    setResetLoading(true);
-    try {
-      const response = await fetch("https://gedapae.com.br/api/user/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail, recoveryCode: resetCode, newPassword: resetPassword })
-      });
-      if (response.ok) {
-        Alert.alert("Sucesso", "Senha redefinida com sucesso!");
-        setResetVisible(false);
-        setForgotEmail("");
-        setResetCode("");
-        setResetPassword("");
-      } else {
-        let errorMsg = `Não foi possível redefinir a senha. Verifique o código informado.\n(Status: ${response.status})`;
-        try {
-          const text = await response.text();
-          if (text) {
-            errorMsg += `\nResposta do servidor: ${text}`;
-          }
-        } catch {}
-        Alert.alert("Erro", errorMsg);
-      }
-    } catch {
-      Alert.alert("Erro", "Falha ao conectar ao servidor.");
-    } finally {
-      setResetLoading(false);
-    }
-  };
-  // Hooks para recuperação de senha
-  const [forgotVisible, setForgotVisible] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotLoading, setForgotLoading] = useState(false);
+  const {
+    step,
+    email: recoveryEmail,
+    code,
+    newPassword,
+    loading: recoveryLoading,
+    setEmail: setRecoveryEmail,
+    setCode,
+    setNewPassword,
+    sendRecoveryEmail,
+    resetPassword,
+    resetFlow,
+    startRecovery,
+  } = usePasswordRecovery();
 
-  // Função para enviar recuperação de senha
-  const handleForgotPassword = async () => {
-    if (!forgotEmail) {
-      Alert.alert("Erro", "Informe o e-mail para recuperação.");
-      return;
-    }
-    setForgotLoading(true);
-    try {
-      const response = await fetch("https://gedapae.com.br/api/user/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail })
-      });
-      if (response.ok) {
-        Alert.alert("Sucesso", "Se o e-mail estiver cadastrado, você receberá um código para redefinir sua senha.");
-        setForgotVisible(false);
-        setResetVisible(true);
-      } else {
-        Alert.alert("Erro", "Não foi possível enviar o e-mail de recuperação.");
-      }
-    } catch {
-      Alert.alert("Erro", "Falha ao conectar ao servidor.");
-    } finally {
-      setForgotLoading(false);
-    }
-  };
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [scannerVisible, setScannerVisible] = useState(false);
-  const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned] = useState(false);
-  const [autoLogin, setAutoLogin] = useState(false);
-
-  React.useEffect(() => {
-    if (scannerVisible && !permission?.granted) {
-      requestPermission();
-    }
-  }, [scannerVisible, permission]);
-
-  React.useEffect(() => {
-    if (autoLogin && email && password) {
-      handleLogin();
-      setAutoLogin(false);
-    }
-  }, [autoLogin, email, password]);
-
-  const handleBarCodeScanned = ({ type, data }: { type: string, data: string }) => {
-    if (scanned) return;
-    setScanned(true);
-    try {
-      const payload = JSON.parse(data);
-      if (payload.email && payload.password) {
-        setEmail(payload.email);
-        setPassword(payload.password);
-        setScannerVisible(false);
-        setAutoLogin(true);
-        setTimeout(() => setScanned(false), 1000);
-      } else {
-        Alert.alert('QR Code inválido', 'O QR Code não contém email e senha.');
-        setTimeout(() => setScanned(false), 1000);
-      }
-    } catch {
-      Alert.alert('QR Code inválido', 'Não foi possível ler os dados do QR Code.');
-      setTimeout(() => setScanned(false), 1000);
-    }
-  };
+  const {
+    visible: qrVisible,
+    scanned,
+    error: qrError,
+    openScanner,
+    closeScanner,
+    handleScan,
+  } = useQRCode();
 
   const handleLogin = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-      if (!response.ok) throw new Error("Usuário ou senha inválidos");
-        const data = await response.json();
-      {/* Modal de recuperação de senha */}
-      {forgotVisible && (
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            {forgotLoading && (
-              <View style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(255,255,255,0.7)',
-                justifyContent: 'center',
-                alignItems: 'center',
-                zIndex: 99,
-              }}>
-                <ActivityIndicator size="large" color="#007BFF" />
-              </View>
-            )}
-            <Text style={styles.modalTitle}>Recuperação de senha</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Digite seu e-mail"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={forgotEmail}
-              onChangeText={setForgotEmail}
-              editable={!forgotLoading}
-            />
-            <TouchableOpacity style={styles.button} onPress={handleForgotPassword} disabled={forgotLoading}>
-              <Text style={styles.buttonText}>Enviar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.closeModal} onPress={() => setForgotVisible(false)} disabled={forgotLoading}>
-              <Text style={{ color: '#007BFF', fontWeight: 'bold' }}>Fechar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-        if (!data.permissions || !data.permissions.includes("DOCUMENTOS")) {
-          Alert.alert("Permissão insuficiente", "Você não tem permissão para digitalizar documentos");
-          return;
+    const success = await login();
+    if (success) {
+      // Navegar para tela principal ou dashboard
+      router.replace('/');
+    }
+    // O erro já está sendo tratado no useAuth hook
+    // e será mostrado no useEffect abaixo
+  };
+
+  // Limpar flag de auto-login quando usuário digita manualmente
+  useEffect(() => {
+    // Este useEffect serve apenas para debugging
+    if (__DEV__ && email && password) {
+      console.log('Login state:', { email, password: password ? '***' : '', autoLoginTriggered, loading });
+    }
+  }, [email, password, autoLoginTriggered, loading]);
+
+  const handleQRCodeScan = (data: string) => {
+    const qrData = handleScan(data);
+    if (qrData) {
+      if (__DEV__) {
+        console.log('QR Code scanned successfully:', { email: qrData.email, password: '***' });
+      }
+      
+      // Limpar erro se houver
+      if (error) clearError();
+      
+      // Reset flag antes de definir novos valores
+      setAutoLoginTriggered(false);
+      
+      // Definir os valores
+      setEmail(qrData.email);
+      setPassword(qrData.password);
+      
+      // Fazer login direto após um pequeno delay
+      setTimeout(async () => {
+        if (__DEV__) {
+          console.log('Starting QR auto-login with credentials:', { email: qrData.email, password: '***' });
         }
-        // Aqui você pode salvar o token e navegar para a tela principal
-    } catch (err) {
-  const msg = err instanceof Error ? err.message : "Erro desconhecido";
-  Alert.alert("Erro", msg);
-    } finally {
-      setLoading(false);
+        setAutoLoginTriggered(true);
+        
+        // Passar credenciais diretamente para evitar condição de corrida
+        const success = await login({ email: qrData.email, password: qrData.password });
+        if (success) {
+          if (__DEV__) {
+            console.log('QR auto-login successful, navigating...');
+          }
+          router.replace('/');
+        } else {
+          if (__DEV__) {
+            console.log('QR auto-login failed');
+          }
+        }
+      }, 500); // Reduzindo para 500ms já que passamos credenciais diretamente
     }
   };
 
-    return (
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 20}
-      >
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <Image source={require("../assets/images/logo.png")} style={styles.logo} resizeMode="contain" />
-        <Text style={styles.title}>Bem-vindo ao GED APAE</Text>
-        <TextInput
-          style={styles.input}
+  const handleForgotPassword = async () => {
+    if (!recoveryEmail) {
+      return;
+    }
+    
+    const success = await sendRecoveryEmail();
+    if (!success && step === 'email') {
+      // Se falhou, pode tentar novamente
+      return;
+    }
+  };
+
+  const handleResetPassword = async () => {
+    const success = await resetPassword();
+    if (success) {
+      // Reset foi bem-sucedido, voltar para login normal
+      resetFlow();
+    }
+  };
+
+  const handleCloseRecovery = () => {
+    resetFlow();
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 20}
+    >
+      <Container style={styles.content}>
+        {/* Logo */}
+        <Image 
+          source={require("../assets/images/logo.png")} 
+          style={styles.logo} 
+          resizeMode="contain" 
+        />
+
+        {/* Título */}
+        <Typography variant="h2" color="primary" align="center" style={styles.title}>
+          Bem-vindo ao GED APAE
+        </Typography>
+
+        {/* Campos de login */}
+        <Input
           placeholder="E-mail"
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
+          onChangeText={(text) => {
+            setEmail(text);
+            setAutoLoginTriggered(false); // Reset flag on manual input
+            if (error) clearError(); // Limpar erro quando usuário digita
+          }}
           style={styles.input}
+        />
+
+        <Input
           placeholder="Senha"
           secureTextEntry
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            setAutoLoginTriggered(false); // Reset flag on manual input
+            if (error) clearError(); // Limpar erro quando usuário digita
+          }}
+          style={styles.input}
         />
-        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-          {loading ? <ActivityIndicator color="#007BFF" /> : <Text style={styles.buttonText}>Entrar</Text>}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.qrButton} onPress={() => setScannerVisible(true)}>
-          <MaterialIcons name="qr-code-scanner" size={48} color="#007BFF" />
-          <Text style={{ color: '#007BFF', fontWeight: 'bold', marginTop: 8 }}>Login via QR Code</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.forgotButton} onPress={() => setForgotVisible(true)}>
-          <Text style={styles.forgotText}>Esqueci minha senha</Text>
-        </TouchableOpacity>
-        {scannerVisible && (
-          <View style={styles.scannerContainer}>
-            {!permission ? (
-              <Text>Solicitando permissão para acessar a câmera...</Text>
-            ) : !(permission?.granted) ? (
-              <Text>Permissão para câmera negada.</Text>
-            ) : (
-              <CameraView
-                style={{ flex: 1, width: '100%' }}
-                onBarcodeScanned={handleBarCodeScanned}
-                facing="back"
-              />
-            )}
-            <TouchableOpacity style={styles.closeScanner} onPress={() => { setScannerVisible(false); setScanned(false); }}>
-              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Fechar</Text>
-            </TouchableOpacity>
+
+        {/* Mensagem de erro */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <Typography color="error" style={styles.errorText}>
+              {error}
+            </Typography>
           </View>
         )}
-        {/* Modal de recuperação de senha */}
-        {forgotVisible && (
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Recuperação de senha</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Digite seu e-mail"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={forgotEmail}
-                onChangeText={setForgotEmail}
-                editable={!forgotLoading}
+
+        {/* Botão de login */}
+        <Button
+          title="Entrar"
+          onPress={handleLogin}
+          disabled={loading}
+          loading={loading}
+          style={[styles.loginButton, { width: '100%' }]}
+        />
+
+        {/* QR Code Scanner */}
+        <Container style={styles.qrButton}>
+          <IconButton
+            iconName="qr-code-scanner"
+            size={48}
+            color="#007BFF"
+            onPress={openScanner}
+          />
+          <Typography color="primary" style={styles.qrText}>
+            Login via QR Code
+          </Typography>
+        </Container>
+
+        {/* Esqueci minha senha */}
+        <TouchableOpacity 
+          style={styles.forgotButton} 
+          onPress={() => startRecovery(email)}
+        >
+          <Typography variant="link" color="error">
+            Esqueci minha senha
+          </Typography>
+        </TouchableOpacity>
+      </Container>
+
+      {/* QR Code Scanner Modal */}
+      {qrVisible && (
+        <QRCodeScanner
+          visible={qrVisible}
+          onClose={closeScanner}
+          onScan={handleQRCodeScan}
+        />
+      )}
+
+      {/* Password Recovery Modal */}
+      <Modal
+        visible={step !== 'idle'}
+        onClose={handleCloseRecovery}
+        title={step === 'email' ? 'Recuperação de senha' : 'Redefinir senha'}
+        showCloseButton={false}
+        width="90%"
+      >
+        {step === 'email' && (
+          <View style={styles.modalContent}>
+            <Input
+              placeholder="Digite seu e-mail"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={recoveryEmail}
+              onChangeText={setRecoveryEmail}
+              style={styles.modalInput}
+            />
+            <View style={styles.modalActions}>
+              <Button
+                title="Cancelar"
+                variant="outline"
+                size="small"
+                onPress={handleCloseRecovery}
+                style={styles.modalActionButton}
               />
-              <TouchableOpacity style={styles.button} onPress={handleForgotPassword} disabled={forgotLoading}>
-                {forgotLoading ? <ActivityIndicator color="#007BFF" /> : <Text style={styles.buttonText}>Enviar</Text>}
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.closeModal} onPress={() => setForgotVisible(false)} disabled={forgotLoading}>
-                <Text style={{ color: '#007BFF', fontWeight: 'bold' }}>Fechar</Text>
-              </TouchableOpacity>
+              <Button
+                title="Enviar"
+                size="small"
+                onPress={handleForgotPassword}
+                disabled={recoveryLoading || !recoveryEmail}
+                loading={recoveryLoading}
+                style={styles.modalActionButton}
+              />
             </View>
           </View>
         )}
-        {/* Modal de redefinição de senha */}
-        {resetVisible && (
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Redefinir senha</Text>
-              <Text style={{ marginBottom: 8, color: '#222', textAlign: 'center' }}>
-                Informe o código recebido por e-mail e sua nova senha.
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Código recebido"
-                autoCapitalize="none"
-                keyboardType="number-pad"
-                value={resetCode}
-                onChangeText={setResetCode}
+
+        {step === 'reset' && (
+          <View style={styles.modalContent}>
+            <Typography style={styles.modalDescription}>
+              Informe o código recebido por e-mail e sua nova senha.
+            </Typography>
+            
+            <Input
+              placeholder="Código recebido"
+              autoCapitalize="none"
+              keyboardType="number-pad"
+              value={code}
+              onChangeText={setCode}
+              style={styles.modalInput}
+            />
+            
+            <Input
+              placeholder="Nova senha"
+              secureTextEntry
+              value={newPassword}
+              onChangeText={setNewPassword}
+              style={styles.modalInput}
+            />
+            
+            <View style={styles.modalActions}>
+              <Button
+                title="Cancelar"
+                variant="outline"
+                size="small"
+                onPress={handleCloseRecovery}
+                style={styles.modalActionButton}
               />
-              <TextInput
-                style={styles.input}
-                placeholder="Nova senha"
-                secureTextEntry
-                value={resetPassword}
-                onChangeText={setResetPassword}
+              <Button
+                title="Redefinir"
+                size="small"
+                onPress={handleResetPassword}
+                disabled={recoveryLoading || !code || !newPassword}
+                loading={recoveryLoading}
+                style={styles.modalActionButton}
               />
-              <TouchableOpacity style={styles.button} onPress={handleResetPassword} disabled={resetLoading}>
-                {resetLoading ? <ActivityIndicator color="#007BFF" /> : <Text style={styles.buttonText}>Redefinir</Text>}
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.closeModal} onPress={() => setResetVisible(false)}>
-                <Text style={{ color: '#007BFF', fontWeight: 'bold' }}>Fechar</Text>
-              </TouchableOpacity>
             </View>
           </View>
         )}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    );
+      </Modal>
+    </KeyboardAvoidingView>
+  );
 }
 
 const styles = StyleSheet.create({
-  forgotButton: {
-    alignSelf: 'center',
-    marginTop: 64,
-    marginBottom: 8,
-  },
-  forgotText: {
-    color: 'red',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  modalContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 20,
-  },
-  modalContent: {
-    backgroundColor: '#FFF',
-    padding: 24,
-    borderRadius: 12,
-    width: '80%',
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 20,
-    color: '#007BFF',
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  closeModal: {
-    marginTop: 16,
-    padding: 8,
-  },
-  qrButton: {
-    marginTop: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   container: {
     flex: 1,
     backgroundColor: "#FFF",
+  },
+  content: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
-    minHeight: '100%',
-    display: 'flex',
   },
   logo: {
     width: 160,
@@ -352,57 +331,64 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    fontSize: 24,
-    color: "#007BFF",
-    fontWeight: "bold",
     marginBottom: 32,
   },
   input: {
-    width: "100%",
-    height: 48,
-    borderColor: "#007BFF",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: "#FFF",
-    color: "#222",
   },
-  button: {
-    width: "100%",
-    height: 48,
-    backgroundColor: "#FFF",
-    borderColor: "#007BFF",
-    borderWidth: 2,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
+  loginButton: {
+    marginTop: 8,
   },
-  buttonText: {
-    color: "#007BFF",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  scannerContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'center',
+  qrButton: {
+    marginTop: 24,
     alignItems: 'center',
-    zIndex: 10,
-    padding: 16,
+    justifyContent: 'center',
   },
-  closeScanner: {
-    position: 'absolute',
-    bottom: 32,
-    left: '50%',
-    transform: [{ translateX: -50 }],
-    backgroundColor: '#007BFF',
-    paddingVertical: 12,
-    paddingHorizontal: 32,
+  qrText: {
+    marginTop: 8,
+  },
+  forgotButton: {
+    alignSelf: 'center',
+    marginTop: 32,
+    padding: 8,
+  },
+  modalContent: {
+    width: '100%',
+  },
+  modalInput: {
+    marginBottom: 16,
+    width: '100%',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    width: '100%',
+    paddingHorizontal: 0,
+  },
+  modalActionButton: {
+    flex: 1,
+    height: 40,
+    minWidth: 0,
+    marginHorizontal: 6,
+  },
+  modalDescription: {
+    marginBottom: 16,
+    textAlign: 'center',
+    color: '#666',
+  },
+  errorContainer: {
+    width: '100%',
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#FFE6E6',
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FF6B6B',
+  },
+  errorText: {
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
