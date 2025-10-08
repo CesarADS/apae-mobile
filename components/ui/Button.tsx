@@ -54,7 +54,7 @@ export const Button: React.FC<ButtonProps> = ({
           size="small"
         />
       ) : (
-        <Text style={titleStyle}>{title}</Text>
+        <Text style={titleStyle} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
       )}
     </TouchableOpacity>
   );
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   small: {
     height: 36,
     paddingHorizontal: 12,
-    minWidth: 80,
+    minWidth: 100,
   },
   medium: {
     height: 48,

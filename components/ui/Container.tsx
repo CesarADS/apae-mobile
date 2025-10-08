@@ -59,6 +59,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 24,
+    overflow: 'hidden',
   },
   screen: {
     flex: 1,

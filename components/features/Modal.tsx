@@ -40,7 +40,7 @@ export const Modal: React.FC<ModalProps> = ({
           onPress={(e) => e.stopPropagation()}
         >
           <Container 
-            variant="modal" 
+            variant="modal"
             style={[styles.modalContent, { width }]}
           >
             {title && (
@@ -65,9 +65,7 @@ export const Modal: React.FC<ModalProps> = ({
               </Typography>
             )}
 
-            <View style={styles.content}>
-              {children}
-            </View>
+            <View style={styles.body}>{children}</View>
 
             {showCloseButton && (
               <View style={styles.actions}>
@@ -99,6 +97,7 @@ const styles = StyleSheet.create({
     minWidth: 300,
     maxWidth: '90%',
     width: '85%',
+    padding: 20,
   },
   title: {
     marginBottom: 16,
@@ -106,9 +105,8 @@ const styles = StyleSheet.create({
   subtitle: {
     marginBottom: 20,
   },
-  content: {
+  body: {
     width: '100%',
-    marginBottom: 24,
   },
   actions: {
     width: '100%',

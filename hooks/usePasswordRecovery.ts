@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
-import { AuthService } from '../services/authService';
+import { useApiClient } from './useApiClient';
 
 type PasswordRecoveryStep = 'idle' | 'email' | 'reset';
 
 export const usePasswordRecovery = () => {
+  const api = useApiClient();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -22,7 +23,7 @@ export const usePasswordRecovery = () => {
     setError(null);
     
     try {
-      await AuthService.forgotPassword({ email });
+  await api.post('/user/forgot-password', { email });
       
       setLoading(false);
       setStep('reset');
@@ -54,10 +55,10 @@ export const usePasswordRecovery = () => {
     setError(null);
     
     try {
-      await AuthService.resetPassword({ 
-        email, 
-        recoveryCode: code, 
-        newPassword 
+      await api.post('/user/reset-password', {
+        email,
+        recoveryCode: code,
+        newPassword,
       });
       
       setLoading(false);

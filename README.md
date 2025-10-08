@@ -35,16 +35,36 @@ npm run reset-project
 
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
+## Variáveis de ambiente
+
+O projeto utiliza agora um arquivo `.env` na raiz para configurar a URL base da API.
+
+1. Copie o arquivo `.env.example` para `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+2. Ajuste o valor:
+   ```env
+   API_BASE_URL=https://seu-dominio.com/api
+   ```
+3. A URL é exposta via `extra.apiBaseUrl` em `app.config.js` e acessada em runtime pelo hook `useApiClient`.
+
+IMPORTANTE: Sem `API_BASE_URL` o build falhará (erro lançado em `app.config.js` / `environment.ts`).
+
+Arquivo utilitário: `config/environment.ts` exporta `ENV.API_BASE_URL` caso queira reutilizar em outros pontos.
+
+## Fluxo de build
+
+Alterar o `.env` requer reiniciar o bundler (parar `npx expo start` e iniciar novamente) para refletir o valor no bundle.
+
 ## Learn more
 
-To learn more about developing your project with Expo, look at the following resources:
+Recursos úteis:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- [Expo documentation](https://docs.expo.dev/)
+- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/)
 
 ## Join the community
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- [Expo on GitHub](https://github.com/expo/expo)
+- [Discord community](https://chat.expo.dev)

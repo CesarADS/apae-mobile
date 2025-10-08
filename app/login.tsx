@@ -1,20 +1,24 @@
 import { router } from 'expo-router';
 import React, { useEffect } from 'react';
-import { Image, KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  Button,
-  Container,
-  IconButton,
-  Input,
-  Modal,
-  QRCodeScanner,
-  Typography
+    Button,
+    Container,
+    IconButton,
+    Input,
+    PasswordRecoveryModal,
+    QRCodeScanner,
+    Typography
 } from '../components';
 import { useAuth, usePasswordRecovery, useQRCode } from '../hooks';
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const [autoLoginTriggered, setAutoLoginTriggered] = React.useState(false);
+  const [slowLogin, setSlowLogin] = React.useState(false);
+  const slowLoginTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const {
     email,
@@ -61,21 +65,26 @@ export default function LoginScreen() {
     // e será mostrado no useEffect abaixo
   };
 
-  // Limpar flag de auto-login quando usuário digita manualmente
+  // Timeout para login lento
   useEffect(() => {
-    // Este useEffect serve apenas para debugging
-    if (__DEV__ && email && password) {
-      console.log('Login state:', { email, password: password ? '***' : '', autoLoginTriggered, loading });
+    if (loading) {
+      setSlowLogin(false);
+      if (slowLoginTimerRef.current) clearTimeout(slowLoginTimerRef.current);
+      slowLoginTimerRef.current = setTimeout(() => {
+        setSlowLogin(true);
+      }, 8000); // 8s para considerar "lento"
+    } else {
+      if (slowLoginTimerRef.current) {
+        clearTimeout(slowLoginTimerRef.current);
+        slowLoginTimerRef.current = null;
+      }
+      setSlowLogin(false);
     }
-  }, [email, password, autoLoginTriggered, loading]);
+  }, [loading]);
 
   const handleQRCodeScan = (data: string) => {
     const qrData = handleScan(data);
     if (qrData) {
-      if (__DEV__) {
-        console.log('QR Code scanned successfully:', { email: qrData.email, password: '***' });
-      }
-      
       // Limpar erro se houver
       if (error) clearError();
       
@@ -88,22 +97,12 @@ export default function LoginScreen() {
       
       // Fazer login direto após um pequeno delay
       setTimeout(async () => {
-        if (__DEV__) {
-          console.log('Starting QR auto-login with credentials:', { email: qrData.email, password: '***' });
-        }
         setAutoLoginTriggered(true);
         
         // Passar credenciais diretamente para evitar condição de corrida
         const success = await login({ email: qrData.email, password: qrData.password });
         if (success) {
-          if (__DEV__) {
-            console.log('QR auto-login successful, navigating...');
-          }
           router.replace('/');
-        } else {
-          if (__DEV__) {
-            console.log('QR auto-login failed');
-          }
         }
       }, 500); // Reduzindo para 500ms já que passamos credenciais diretamente
     }
@@ -134,12 +133,19 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 20}
-    >
-      <Container style={styles.content}>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 12 : 0}
+      >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 }]}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+      <Container style={styles.inner}>
         {/* Logo */}
         <Image 
           source={require("../assets/images/logo.png")} 
@@ -187,6 +193,15 @@ export default function LoginScreen() {
           </View>
         )}
 
+        {/* Mensagem de login lento */}
+        {!error && slowLogin && (
+          <View style={styles.slowContainer}>
+            <Typography style={styles.slowText}>
+              O login está demorando mais que o esperado. Verifique sua conexão ou tente novamente em instantes.
+            </Typography>
+          </View>
+        )}
+
         {/* Botão de login */}
         <Button
           title="Entrar"
@@ -229,101 +244,41 @@ export default function LoginScreen() {
         />
       )}
 
-      {/* Password Recovery Modal */}
-      <Modal
+      <PasswordRecoveryModal
         visible={step !== 'idle'}
+        step={step}
+        email={recoveryEmail}
+        code={code}
+        newPassword={newPassword}
+        loading={recoveryLoading}
+        onChangeEmail={setRecoveryEmail}
+        onChangeCode={setCode}
+        onChangeNewPassword={setNewPassword}
+        onSendEmail={handleForgotPassword}
+        onResetPassword={handleResetPassword}
         onClose={handleCloseRecovery}
-        title={step === 'email' ? 'Recuperação de senha' : 'Redefinir senha'}
-        showCloseButton={false}
-        width="90%"
-      >
-        {step === 'email' && (
-          <View style={styles.modalContent}>
-            <Input
-              placeholder="Digite seu e-mail"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={recoveryEmail}
-              onChangeText={setRecoveryEmail}
-              style={styles.modalInput}
-            />
-            <View style={styles.modalActions}>
-              <Button
-                title="Cancelar"
-                variant="outline"
-                size="small"
-                onPress={handleCloseRecovery}
-                style={styles.modalActionButton}
-              />
-              <Button
-                title="Enviar"
-                size="small"
-                onPress={handleForgotPassword}
-                disabled={recoveryLoading || !recoveryEmail}
-                loading={recoveryLoading}
-                style={styles.modalActionButton}
-              />
-            </View>
-          </View>
-        )}
-
-        {step === 'reset' && (
-          <View style={styles.modalContent}>
-            <Typography style={styles.modalDescription}>
-              Informe o código recebido por e-mail e sua nova senha.
-            </Typography>
-            
-            <Input
-              placeholder="Código recebido"
-              autoCapitalize="none"
-              keyboardType="number-pad"
-              value={code}
-              onChangeText={setCode}
-              style={styles.modalInput}
-            />
-            
-            <Input
-              placeholder="Nova senha"
-              secureTextEntry
-              value={newPassword}
-              onChangeText={setNewPassword}
-              style={styles.modalInput}
-            />
-            
-            <View style={styles.modalActions}>
-              <Button
-                title="Cancelar"
-                variant="outline"
-                size="small"
-                onPress={handleCloseRecovery}
-                style={styles.modalActionButton}
-              />
-              <Button
-                title="Redefinir"
-                size="small"
-                onPress={handleResetPassword}
-                disabled={recoveryLoading || !code || !newPassword}
-                loading={recoveryLoading}
-                style={styles.modalActionButton}
-              />
-            </View>
-          </View>
-        )}
-      </Modal>
-    </KeyboardAvoidingView>
+      />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFF',
+  },
   container: {
     flex: 1,
     backgroundColor: "#FFF",
   },
-  content: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
+  scrollContent: {
+    paddingHorizontal: 24,
+  },
+  inner: {
+    alignItems: 'center',
+    width: '100%',
   },
   logo: {
     width: 160,
@@ -352,31 +307,6 @@ const styles = StyleSheet.create({
     marginTop: 32,
     padding: 8,
   },
-  modalContent: {
-    width: '100%',
-  },
-  modalInput: {
-    marginBottom: 16,
-    width: '100%',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-    width: '100%',
-    paddingHorizontal: 0,
-  },
-  modalActionButton: {
-    flex: 1,
-    height: 40,
-    minWidth: 0,
-    marginHorizontal: 6,
-  },
-  modalDescription: {
-    marginBottom: 16,
-    textAlign: 'center',
-    color: '#666',
-  },
   errorContainer: {
     width: '100%',
     marginBottom: 16,
@@ -390,5 +320,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     fontWeight: '500',
+  },
+  slowContainer: {
+    width: '100%',
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#FFF8E1',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFC107',
+  },
+  slowText: {
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#7A5A00',
   },
 });

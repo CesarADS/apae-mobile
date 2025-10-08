@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { AuthService } from '../services/authService';
 import {
-    AuthState
+  AuthState
 } from '../types/auth';
+import { useApiClient } from './useApiClient';
 
 export const useAuth = () => {
+  const api = useApiClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [state, setState] = useState<AuthState>({
@@ -32,7 +33,10 @@ export const useAuth = () => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
-      const result = await AuthService.login({ email: loginEmail, password: loginPassword });
+      const result = await api.post<any>('/user/login', { email: loginEmail, password: loginPassword });
+      if (!result?.permissions || !result.permissions.includes('DOCUMENTOS')) {
+        throw new Error('Você não tem permissão para digitalizar documentos');
+      }
       
       setState(prev => ({
         ...prev,

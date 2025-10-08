@@ -26,6 +26,7 @@ export const Input: React.FC<InputProps> = ({
 const styles = StyleSheet.create({
   base: {
     width: "100%",
+    maxWidth: "100%",
     height: 48,
     borderColor: "#007BFF",
     borderWidth: 1,
@@ -35,6 +36,8 @@ const styles = StyleSheet.create({
     color: "#222",
     fontSize: 16,
     textAlignVertical: 'center', // Para Android
+    flexShrink: 1,
+    minWidth: 0,
   },
   outlined: {
     backgroundColor: "transparent",
