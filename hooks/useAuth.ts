@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  AuthState
+    AuthState
 } from '../types/auth';
 import { useApiClient } from './useApiClient';
 
@@ -38,6 +38,11 @@ export const useAuth = () => {
         throw new Error('Você não tem permissão para digitalizar documentos');
       }
       
+      // Definir o token para requisições futuras
+      if (result?.token) {
+        api.setToken(result.token);
+      }
+      
       setState(prev => ({
         ...prev,
         isAuthenticated: true,
@@ -61,6 +66,9 @@ export const useAuth = () => {
   };
 
   const logout = async (): Promise<void> => {
+    // Limpar o token
+    api.setToken(null);
+    
     setState({
       isAuthenticated: false,
       user: null,

@@ -59,7 +59,7 @@ export default function LoginScreen() {
     const success = await login();
     if (success) {
       // Navegar para tela principal ou dashboard
-      router.replace('/');
+      router.push('./dashboard');
     }
     // O erro já está sendo tratado no useAuth hook
     // e será mostrado no useEffect abaixo
@@ -102,7 +102,7 @@ export default function LoginScreen() {
         // Passar credenciais diretamente para evitar condição de corrida
         const success = await login({ email: qrData.email, password: qrData.password });
         if (success) {
-          router.replace('/');
+          router.push('./dashboard');
         }
       }, 500); // Reduzindo para 500ms já que passamos credenciais diretamente
     }

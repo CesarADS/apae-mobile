@@ -1,15 +1,26 @@
-import { Text, View } from "react-native";
+import { router } from "expo-router";
+import { useEffect } from "react";
+import { View } from "react-native";
+import { Typography } from "../components";
 
 export default function Index() {
+  useEffect(() => {
+    // Redirecionar para login automaticamente
+    router.replace('./login');
+  }, []);
+
   return (
     <View
       style={{
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
+        backgroundColor: '#FFF'
       }}
     >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
+      <Typography variant="body" color="secondary">
+        Carregando...
+      </Typography>
     </View>
   );
 }
