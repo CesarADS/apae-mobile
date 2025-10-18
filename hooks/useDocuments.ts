@@ -18,7 +18,7 @@ export const useDocuments = () => {
 
       // Buscar documentos normais e institucionais em paralelo
       const [normalDocs, institucionalDocs] = await Promise.all([
-        get<DocumentDTO[]>('/documents/meus'),
+        get<DocumentDTO[]>('/documentos/meus'),
         get<InstitucionalDTO[]>('/institucional/meus')
       ]);
 
@@ -43,11 +43,14 @@ export const useDocuments = () => {
       const allDocuments = [...normalDocuments, ...institucionalDocuments];
       allDocuments.sort((a, b) => new Date(b.dataUpload).getTime() - new Date(a.dataUpload).getTime());
 
-      // Retornar apenas os 5 mais recentes
-      return allDocuments.slice(0, 5);
+      // Retornar apenas os 3 mais recentes
+      return allDocuments.slice(0, 3);
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar documentos';
+      if (errorMessage.includes('Usuário ou senha inválidos')) {
+        console.warn('[useDocuments] 401/403 recebido. Verifique token nos headers.');
+      }
       setError(errorMessage);
       console.error('Erro ao buscar documentos:', err);
       return [];

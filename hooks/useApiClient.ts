@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 
 const API_BASE_URL_RAW: string | undefined = (Constants?.expoConfig?.extra as any)?.apiBaseUrl;
 
@@ -18,16 +18,33 @@ interface UseApiClientOptions {
 
 export const useApiClient = (options: UseApiClientOptions = {}) => {
   const baseURL = options.baseURL || API_BASE_URL;
-  const tokenRef = useRef<string | null>(options.initialToken || null);
+
+  // Token global compartilhado entre todas as instâncias do hook
+  // Evita que diferentes hooks usem tokens diferentes durante o mesmo ciclo de vida do app
+  // (ex.: login define o token e o hook de documentos usa imediatamente)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let __ensureModuleScope: void; // marcador para indicar escopo de módulo
+  // @ts-expect-error - variável de módulo deliberada
+  if (typeof globalThis.__APAEMOBILE_API_TOKEN === 'undefined') {
+    // @ts-expect-error - criação controlada
+    globalThis.__APAEMOBILE_API_TOKEN = options.initialToken ?? null;
+  }
+
+  // Helpers para acessar/atualizar token global
+  const getGlobalToken = () => (globalThis as any).__APAEMOBILE_API_TOKEN as string | null;
+  const setGlobalToken = (token: string | null) => {
+    (globalThis as any).__APAEMOBILE_API_TOKEN = token;
+  };
 
   const setToken = useCallback((token: string | null) => {
-    tokenRef.current = token;
+    setGlobalToken(token);
   }, []);
 
   const getHeaders = useCallback((): HeadersInit => {
     const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (tokenRef.current) {
-      headers.Authorization = `Bearer ${tokenRef.current}`;
+    const token = getGlobalToken();
+    if (token) {
+      (headers as Record<string, string>).Authorization = `Bearer ${token}`;
     }
     return headers;
   }, []);

@@ -62,7 +62,7 @@ export default function DashboardScreen() {
   };
 
   const renderDocumentItem = ({ item }: { item: Document }) => (
-    <TouchableOpacity style={styles.documentItem}>
+    <View style={styles.documentItem}>
       <View style={styles.documentContent}>
         <View style={styles.documentHeader}>
           <Typography variant="body" style={styles.documentTitle} numberOfLines={2}>
@@ -79,7 +79,7 @@ export default function DashboardScreen() {
                 { color: item.type === 'institucional' ? '#1976D2' : '#7B1FA2' }
               ]}
             >
-              {item.type === 'institucional' ? 'Institucional' : 'Normal'}
+              {item.type === 'institucional' ? 'Institucional' : 'Pessoa'}
             </Typography>
           </View>
         </View>
@@ -90,7 +90,7 @@ export default function DashboardScreen() {
           Enviado em {formatDate(item.dataUpload)}
         </Typography>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -158,9 +158,10 @@ export default function DashboardScreen() {
             <FlatList
               data={recentDocuments}
               renderItem={renderDocumentItem}
-              keyExtractor={(item) => item.id.toString()}
+              keyExtractor={(item) => `${item.type}-${item.id}`}
               style={styles.documentsList}
               showsVerticalScrollIndicator={false}
+              scrollEnabled={false}
             />
           ) : (
             <View style={styles.emptyContainer}>
@@ -200,7 +201,7 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   digitalizationSection: {
-    flex: 1,
+    flex: 0.4, // 40% da tela
     padding: 24,
     justifyContent: 'center',
   },
@@ -224,7 +225,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   documentsSection: {
-    flex: 1,
+    flex: 0.6, // 60% da tela
     padding: 24,
     paddingTop: 0,
   },

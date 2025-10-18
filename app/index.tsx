@@ -1,26 +1,6 @@
-import { router } from "expo-router";
-import { useEffect } from "react";
-import { View } from "react-native";
-import { Typography } from "../components";
+import { Redirect } from "expo-router";
 
 export default function Index() {
-  useEffect(() => {
-    // Redirecionar para login automaticamente
-    router.replace('./login');
-  }, []);
-
-  return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: '#FFF'
-      }}
-    >
-      <Typography variant="body" color="secondary">
-        Carregando...
-      </Typography>
-    </View>
-  );
+  // Use <Redirect /> para evitar navegação antes do Root Layout montar
+  return <Redirect href="/login" />;
 }
