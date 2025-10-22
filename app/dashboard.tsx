@@ -22,11 +22,7 @@ export default function DashboardScreen() {
   };
 
   const handleDigitalizeDocument = () => {
-    Alert.alert(
-      'Digitalizar Documento',
-      'Funcionalidade será implementada em breve!',
-      [{ text: 'OK' }]
-    );
+    router.push('./digitalization/select-entity' as any);
   };
 
   const handleRefresh = () => {
