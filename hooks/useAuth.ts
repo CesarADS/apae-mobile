@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-    AuthState
+  AuthState
 } from '../types/auth';
 import { useApiClient } from './useApiClient';
 
@@ -34,7 +34,23 @@ export const useAuth = () => {
     
     try {
       const result = await api.post<any>('/user/login', { email: loginEmail, password: loginPassword });
-      if (!result?.permissions || !result.permissions.includes('DOCUMENTOS')) {
+      
+      // Decodificar o token JWT para extrair as permissões
+      let permissions: string[] = [];
+      if (result?.token) {
+        try {
+          // Decodificar o payload do JWT (segunda parte do token)
+          const payload = result.token.split('.')[1];
+          const decodedPayload = JSON.parse(atob(payload));
+          permissions = decodedPayload.permissions || [];
+          console.log('Permissões decodificadas:', permissions);
+        } catch (decodeError) {
+          console.error('Erro ao decodificar token:', decodeError);
+        }
+      }
+      
+      // Verificar se tem permissão de DOCUMENTOS
+      if (!permissions.includes('DOCUMENTOS')) {
         throw new Error('Você não tem permissão para digitalizar documentos');
       }
       
@@ -47,7 +63,7 @@ export const useAuth = () => {
         ...prev,
         isAuthenticated: true,
         user: null, // TODO: carregar dados do usuário se necessário
-        data: result,
+        data: { ...result, permissions }, // Adicionar permissões decodificadas
         loading: false,
       }));
       

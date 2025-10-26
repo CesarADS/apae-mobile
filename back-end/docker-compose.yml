@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ged-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ged-app
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "Sen@c2023"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
+    driver: local

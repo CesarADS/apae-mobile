@@ -4,7 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
-import { Alert, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 export default function CameraScreen() {
   const router = useRouter();
@@ -128,6 +128,7 @@ export default function CameraScreen() {
   // Modo de captura
   return (
     <View style={styles.fullscreen}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
       <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
         {/* Overlay com guias A4 */}
         <View style={styles.overlay}>
@@ -176,7 +177,11 @@ export default function CameraScreen() {
 
 const styles = StyleSheet.create({
   fullscreen: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: '#000',
   },
   camera: {

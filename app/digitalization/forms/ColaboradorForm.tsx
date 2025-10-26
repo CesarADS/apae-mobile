@@ -190,6 +190,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange }) => {
             display="default"
             onChange={handleDateChange}
             maximumDate={new Date()}
+            locale="pt-BR"
           />
         )}
       </View>
@@ -213,9 +214,11 @@ const styles = StyleSheet.create({
     borderColor: '#007BFF',
     borderRadius: 8,
     backgroundColor: '#FFF',
+    overflow: 'hidden',
+    marginVertical: -4,
   },
   picker: {
-    height: 48,
+    height: 56,
   },
   loader: {
     marginTop: 8,
