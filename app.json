@@ -7,7 +7,7 @@
     "icon": "./assets/images/logo.png",
     "scheme": "apaemobile",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true
     },
@@ -45,7 +45,14 @@
           }
         }
       ],
-      "expo-barcode-scanner"
+      "expo-barcode-scanner",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "A aplicação precisa acessar suas fotos para permitir o recorte de imagens.",
+          "cameraPermission": "A aplicação precisa acessar sua câmera para capturar imagens."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
