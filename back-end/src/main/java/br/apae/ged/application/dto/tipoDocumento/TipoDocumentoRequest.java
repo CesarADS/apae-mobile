@@ -7,5 +7,6 @@ public record TipoDocumentoRequest (
         boolean guardaPermanente,
         boolean institucional,
         boolean documentoAssinavel,
-        boolean podeGerarDocumento
+        boolean gerarDocumento,
+        boolean colaborador
 ){}

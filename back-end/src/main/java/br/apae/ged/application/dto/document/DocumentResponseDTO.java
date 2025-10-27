@@ -16,7 +16,9 @@ public record DocumentResponseDTO(
         LocalDateTime dataDownload,
         LocalDate dataDocumento,
         PessoaResponseDTO pessoa,
-        TipoDocumentoResponseDTO tipoDocumento) {
+        TipoDocumentoResponseDTO tipoDocumento,
+        LocalDate validade
+        ) {
 
     public record PessoaResponseDTO(
             Long id,
@@ -47,16 +49,19 @@ public record DocumentResponseDTO(
     }
 
     public static DocumentResponseDTO fromEntity(Document document) {
+        String content = document.getDocumentContent() != null ? document.getDocumentContent().getConteudo() : null;
         return new DocumentResponseDTO(
                 document.getId(),
                 document.getTitulo(),
                 document.getTipoConteudo(),
-                document.getConteudo(),
+                content,
                 document.getDataUpload(),
                 document.getDataDownload(),
                 document.getDataDocumento(),
                 PessoaResponseDTO.fromEntity(document.getPessoa()),
-                TipoDocumentoResponseDTO.fromEntity(document.getTipoDocumento()));
+                TipoDocumentoResponseDTO.fromEntity(document.getTipoDocumento()),
+                document.getValidade()
+                );
     }
 
     public static DocumentResponseDTO fromEntityWithoutContent(Document document) {
@@ -69,6 +74,23 @@ public record DocumentResponseDTO(
                 document.getDataDownload(),
                 document.getDataDocumento(),
                 PessoaResponseDTO.fromEntity(document.getPessoa()),
-                TipoDocumentoResponseDTO.fromEntity(document.getTipoDocumento()));
+                TipoDocumentoResponseDTO.fromEntity(document.getTipoDocumento()),
+                document.getValidade()
+        );
+    }
+
+    public static DocumentResponseDTO fromEntityWithCustomContent(Document document, String customContent) {
+        return new DocumentResponseDTO(
+                document.getId(),
+                document.getTitulo(),
+                document.getTipoConteudo(),
+                customContent,
+                document.getDataUpload(),
+                document.getDataDownload(),
+                document.getDataDocumento(),
+                PessoaResponseDTO.fromEntity(document.getPessoa()),
+                TipoDocumentoResponseDTO.fromEntity(document.getTipoDocumento()),
+                document.getValidade()
+        );
     }
 }

@@ -5,9 +5,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -18,14 +21,14 @@ import java.time.LocalDateTime;
         @Index(name = "titulo_idx", columnList = "titulo"),
         @Index(name = "pessoa_idx", columnList = "pessoa_id")
 })
+@SQLDelete(sql = "UPDATE tb_documentos SET deleted_at = now() WHERE id=?")
+@SQLRestriction("deleted_at is null")
 public class Document {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
     private String titulo;
-    @Column(columnDefinition = "TEXT")
-    private String conteudo;
     private String tipoConteudo;
     private LocalDateTime dataUpload;
     private LocalDateTime dataDownload;
@@ -34,6 +37,14 @@ public class Document {
     @Column(name = "is_ativo", nullable = false)
     private boolean isAtivo = true;
     private boolean isLast = true;
+    private LocalDateTime deletedAt;
+    private LocalDate validade;
+
+    @OneToOne(mappedBy = "document", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private DocumentContent documentContent;
+
+    @OneToMany(mappedBy = "documento", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Assinatura> assinaturas;
 
     @ManyToOne
     @JoinColumn(name = "document_type_id")

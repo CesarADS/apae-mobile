@@ -7,6 +7,6 @@ public record DocumentDTO(
     String titulo,
     String tipoDocumento,
     LocalDateTime dataUpload,
-    boolean isLast,
+    Boolean isLast,
     String nomeUsuario
 ) {}

@@ -1,6 +1,7 @@
 package br.apae.ged.presentation.controllers;
 
 import br.apae.ged.application.dto.document.DocumentUploadResponseDTO;
+import br.apae.ged.application.dto.document.DownloadDTO;
 import br.apae.ged.application.dto.documentoIstitucional.*;
 import br.apae.ged.application.services.InstitucionalService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -27,16 +29,17 @@ import java.util.List;
 @RestController
 @RequestMapping("/institucional")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('DOCUMENTOS')")
 @Tag(name = "Documentos Institucionais", description = "Controla os serviços relacionados a documentos institucionais.")
 public class InstitucionalController {
 
     private final InstitucionalService service;
 
-    @Operation(summary = "Lista documentos institucionais enviados pelo usuário logado", description = "Retorna todos os documentos institucionais cujo uploaded_by é o usuário autenticado.")
+    @Operation(summary = "Lista documentos institucionais enviados pelo usuário logado", description = "Retorna todos os documentos institucionais cujo uploaded_by é o usuário autenticado com paginação.")
     @GetMapping("/meus")
-    public ResponseEntity<List<InstitucionalDTO>> listarMeusDocumentosInstitucionais() {
-        var documentos = service.listarMeusDocumentosInstitucionais();
+    @PreAuthorize("hasAuthority('DOCUMENTO_INSTITUCIONAL_READ')")
+    public ResponseEntity<Page<InstitucionalDTO>> listarMeusDocumentosInstitucionais(
+            @Parameter(description = "Objeto de paginação (page, size, sort)") Pageable pageable) {
+        var documentos = service.listarMeusDocumentosInstitucionais(pageable);
         return ResponseEntity.ok(documentos);
     }
 
@@ -46,6 +49,7 @@ public class InstitucionalController {
             @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos.", content = @Content)
     })
     @PostMapping("/gerar-e-salvar")
+    @PreAuthorize("hasAuthority('DOCUMENTO_INSTITUCIONAL_WRITE')")
     public ResponseEntity<DocumentUploadResponseDTO> gerarESalvarPdf(@RequestBody GerarDocInstitucionalRequest entrada)
             throws Exception {
         var response = service.gerarESalvarPdf(entrada);
@@ -58,6 +62,7 @@ public class InstitucionalController {
             @ApiResponse(responseCode = "500", description = "Erro interno ao gerar o PDF.", content = @Content)
     })
     @PostMapping("/pre-visualizar")
+    @PreAuthorize("hasAuthority('DOCUMENTO_INSTITUCIONAL_WRITE')")
     public ResponseEntity<byte[]> gerarPdfPreview(@RequestBody GerarDocInstitucionalRequest entrada) {
         try {
             byte[] pdfBytes = service.gerarPdf(entrada);
@@ -76,6 +81,7 @@ public class InstitucionalController {
             @ApiResponse(responseCode = "400", description = "Arquivo vazio ou dados inválidos.", content = @Content)
     })
     @PostMapping(value = "/upload", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
+    @PreAuthorize("hasAuthority('DOCUMENTO_INSTITUCIONAL_WRITE')")
     public ResponseEntity<InstucionalUploadResponse> upload(
             @Parameter(description = "Título do documento.") @RequestParam("titulo") String titulo,
             @Parameter(description = "Tipo do documento (ex: 'Ata de Reunião').") @RequestParam("tipoDocumento") String tipoDocumento,
@@ -93,6 +99,7 @@ public class InstitucionalController {
     @Operation(summary = "Lista documentos institucionais com filtros", description = "Retorna uma lista paginada de documentos institucionais, com filtros opcionais por tipo, título e data de criação.")
     @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso.")
     @GetMapping("/listar")
+    @PreAuthorize("hasAuthority('DOCUMENTO_INSTITUCIONAL_READ')")
     public ResponseEntity<Page<InstucionalResponse>> listarDocumentos(
             @Parameter(description = "Filtrar por tipo de documento.") @RequestParam(required = false) String tipoDocumento,
             @Parameter(description = "Filtrar por título do documento.") @RequestParam(required = false) String titulo,
@@ -108,6 +115,7 @@ public class InstitucionalController {
             @ApiResponse(responseCode = "404", description = "Documento não encontrado.", content = @Content)
     })
     @GetMapping("/listarUm/{id}")
+    @PreAuthorize("hasAuthority('DOCUMENTO_INSTITUCIONAL_READ')")
     public ResponseEntity<?> listarUm(
             @Parameter(description = "ID do documento a ser visualizado.") @PathVariable Long id) {
         var documento = service.visualizarUm(id);
@@ -120,6 +128,7 @@ public class InstitucionalController {
             @ApiResponse(responseCode = "404", description = "Documento não encontrado.", content = @Content)
     })
     @PutMapping(value = "/atualizar/{id}", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
+    @PreAuthorize("hasAuthority('DOCUMENTO_INSTITUCIONAL_WRITE')")
     public ResponseEntity<InstucionalResponse> atualizarDocumento(
             @Parameter(description = "ID do documento a ser atualizado.") @PathVariable Long id,
             @ModelAttribute AtualizarInstitucionalRequest dto) throws IOException {
@@ -133,9 +142,30 @@ public class InstitucionalController {
             @ApiResponse(responseCode = "404", description = "Documento não encontrado.", content = @Content)
     })
     @DeleteMapping("/deletar/{id}")
+    @PreAuthorize("hasAuthority('DOCUMENTO_INSTITUCIONAL_DELETE')")
     public ResponseEntity<Void> deletarDocumento(
             @Parameter(description = "ID do documento a ser inativado.") @PathVariable Long id) {
         service.inativar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Lista documentos institucionais permanentes", description = "Retorna uma lista paginada de documentos institucionais com filtro")
+    @GetMapping("/listar_permanente")
+    @PreAuthorize("hasAuthority('DOCUMENTO_INSTITUCIONAL_READ')")
+    public ResponseEntity<?> listarPermanentes(Pageable pageable, @RequestParam(required = false) String termoBusca, Long id) {
+        var paginaDeDocumentos = service.listarPermanente(termoBusca, pageable);
+        return ResponseEntity.ok(paginaDeDocumentos);
+    }
+
+    @GetMapping("/{id}/download")
+    @PreAuthorize("hasAuthority('DOCUMENTO_INSTITUCIONAL_READ')")
+    public ResponseEntity<byte[]> downloadDocumento(
+            @Parameter(description = "ID do documento a ser baixado.") @PathVariable Long id) {
+        DownloadDTO downloadDTO = service.download(id);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(downloadDTO.tipoConteudo()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadDTO.nomeArquivo() + "\"")
+                .body(downloadDTO.conteudo());
     }
 }

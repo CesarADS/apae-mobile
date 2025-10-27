@@ -8,6 +8,7 @@ import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 interface TipoDocumento {
   id: number;
   nome: string;
+  categoria: string;
 }
 
 interface InstituicaoFormData {
@@ -35,20 +36,25 @@ const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange }) => {
     dataDocumento: new Date(),
   });
 
-  // Buscar tipos de documento
+  // Buscar tipos de documento da categoria INSTITUCIONAL
   useEffect(() => {
     const fetchTiposDocumento = async () => {
       try {
-          console.log('Buscando tipos de documento...');
+        console.log('Buscando tipos de documento...');
         const response = await get<TipoDocumento[]>('/tipo-documento/ativos');
-          console.log('Tipos de documento recebidos:', response);
-        setTiposDocumento(response || []);
-      } catch (error) {
-          console.error('Erro ao buscar tipos:', error);
-        Alert.alert('Erro', 'Não foi possível carregar os tipos de documento');
-        console.error(error);
-        } finally {
-          setLoading(false);
+        console.log('Tipos de documento recebidos:', response);
+        // Filtrar apenas os tipos de documento da categoria INSTITUCIONAL
+        const tiposInstitucional = (response || []).filter(tipo => tipo.categoria === 'INSTITUCIONAL');
+        setTiposDocumento(tiposInstitucional);
+      } catch (error: any) {
+        const errorMessage = error?.message || 'Erro desconhecido';
+        console.error('Erro ao buscar tipos:', error);
+        // Não mostrar alerta para erro de token
+        if (!errorMessage.includes('Usuário ou senha inválidos')) {
+          Alert.alert('Erro', 'Não foi possível carregar os tipos de documento');
+        }
+      } finally {
+        setLoading(false);
       }
     };
 

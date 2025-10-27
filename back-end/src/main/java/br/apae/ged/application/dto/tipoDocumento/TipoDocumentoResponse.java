@@ -12,7 +12,12 @@ public record TipoDocumentoResponse(
         LocalDateTime dataAlteracao,
         LocalDateTime dataRegistro,
         Integer validade,
-        Boolean isAtivo) {
+        Boolean isAtivo,
+        Boolean guardaPermanente,
+        Boolean institucional,
+        Boolean documentoAssinavel,
+        Boolean gerarDocumento,
+        Boolean colaborador) {
 
     public TipoDocumentoResponse(TipoDocumento tipoDocumento) {
         this(
@@ -23,6 +28,13 @@ public record TipoDocumentoResponse(
                 tipoDocumento.getDataAlteracao(),
                 tipoDocumento.getDataRegistro(),
                 tipoDocumento.getValidade(),
-                tipoDocumento.getIsAtivo());
+                tipoDocumento.getIsAtivo(),
+                tipoDocumento.isGuardaPermanente(),
+                tipoDocumento.isInstitucional(),
+                tipoDocumento.isDocumentoAssinavel(),
+                tipoDocumento.isPodeGerarDocumento(),
+        tipoDocumento.getColaborador()
+        );
+
     }
 }

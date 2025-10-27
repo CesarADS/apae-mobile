@@ -3,7 +3,7 @@ import { useApiClient } from '@/hooks';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface Aluno {
   id: number;
@@ -15,6 +15,7 @@ interface Aluno {
 interface TipoDocumento {
   id: number;
   nome: string;
+  categoria: string;
 }
 
 interface AlunoFormData {
@@ -33,10 +34,11 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
   
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [tiposDocumento, setTiposDocumento] = useState<TipoDocumento[]>([]);
-  const [loading, setLoading] = useState(true);
-  
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null);
   
   const [formData, setFormData] = useState<AlunoFormData>({
     alunoId: null,
@@ -45,15 +47,21 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
     dataDocumento: new Date(),
   });
 
-  // Buscar tipos de documento
+  // Buscar tipos de documento da categoria ALUNO
   useEffect(() => {
     const fetchTiposDocumento = async () => {
       try {
         const response = await get<TipoDocumento[]>('/tipo-documento/ativos');
-        setTiposDocumento(response || []);
-      } catch (error) {
-        Alert.alert('Erro', 'Não foi possível carregar os tipos de documento');
-        console.error(error);
+        // Filtrar apenas os tipos de documento da categoria ALUNO
+        const tiposAluno = (response || []).filter(tipo => tipo.categoria === 'ALUNO');
+        setTiposDocumento(tiposAluno);
+      } catch (error: any) {
+        const errorMessage = error?.message || 'Erro desconhecido';
+        // Não mostrar alerta para erro de token (será tratado no contexto)
+        if (!errorMessage.includes('Usuário ou senha inválidos')) {
+          Alert.alert('Erro', 'Não foi possível carregar os tipos de documento');
+        }
+        console.error('Erro ao carregar tipos de documento:', error);
       }
     };
 
@@ -64,6 +72,7 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
   useEffect(() => {
     if (searchTerm.length < 2) {
       setAlunos([]);
+      setShowSuggestions(false);
       setLoading(false);
       return;
     }
@@ -71,11 +80,16 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await get<{ content: Aluno[] }>(`/aluno?search=${searchTerm}&page=0`);
+        const response = await get<{ content: Aluno[] }>(`/aluno?search=${searchTerm}&page=0&size=10`);
         setAlunos(response.content || []);
-      } catch (error) {
-        Alert.alert('Erro', 'Não foi possível buscar alunos');
-        console.error(error);
+        setShowSuggestions(true);
+      } catch (error: any) {
+        const errorMessage = error?.message || 'Erro desconhecido';
+        // Não mostrar alerta para erro de token
+        if (!errorMessage.includes('Usuário ou senha inválidos')) {
+          Alert.alert('Erro', 'Não foi possível buscar alunos');
+        }
+        console.error('Erro ao buscar alunos:', error);
         setAlunos([]);
       } finally {
         setLoading(false);
@@ -95,12 +109,14 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
     onChange(formData, isValid);
   }, [formData]);
 
-  const handleAlunoSelect = (alunoId: number) => {
-    const aluno = alunos.find(a => a.id === alunoId);
+  const handleAlunoSelect = (aluno: Aluno) => {
+    setSelectedAluno(aluno);
+    setSearchTerm(`${aluno.nome} - Matrícula: ${aluno.matricula}`);
+    setShowSuggestions(false);
     setFormData(prev => ({
       ...prev,
-      alunoId: alunoId,
-      alunoNome: aluno?.nome || '',
+      alunoId: aluno.id,
+      alunoNome: aluno.nome,
     }));
   };
 
@@ -116,7 +132,7 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
 
   return (
     <View style={styles.container}>
-      {/* Campo de busca de aluno */}
+      {/* Campo de busca de aluno moderno */}
       <View style={styles.field}>
         <Typography variant="body" style={styles.label}>
           Aluno *
@@ -124,36 +140,52 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
         <Input
           placeholder="Digite nome, matrícula ou CPF..."
           value={searchTerm}
-          onChangeText={setSearchTerm}
+          onChangeText={(text) => {
+            setSearchTerm(text);
+            if (selectedAluno) {
+              setSelectedAluno(null);
+              setFormData(prev => ({ ...prev, alunoId: null, alunoNome: '' }));
+            }
+          }}
           autoCapitalize="words"
         />
         {loading && <ActivityIndicator style={styles.loader} />}
-      </View>
-
-      {/* Picker de aluno */}
-      {alunos.length > 0 && (
-        <View style={styles.field}>
-          <Typography variant="body" style={styles.label}>
-            Selecione o aluno
-          </Typography>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={formData.alunoId ?? undefined}
-              onValueChange={handleAlunoSelect}
-              style={styles.picker}
-            >
-              <Picker.Item label="Selecione..." value={undefined} />
-              {alunos.map(aluno => (
-                <Picker.Item
-                  key={aluno.id}
-                  label={`${aluno.nome} - ${aluno.matricula}`}
-                  value={aluno.id}
-                />
-              ))}
-            </Picker>
+        
+        {/* Lista de sugestões */}
+        {showSuggestions && alunos.length > 0 && (
+          <View style={styles.suggestionsContainer}>
+            <FlatList
+              data={alunos}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.suggestionItem}
+                  onPress={() => handleAlunoSelect(item)}
+                >
+                  <Typography variant="body" style={styles.suggestionName}>
+                    {item.nome}
+                  </Typography>
+                  <Typography variant="caption" color="secondary">
+                    Matrícula: {item.matricula}
+                  </Typography>
+                </TouchableOpacity>
+              )}
+              ItemSeparatorComponent={() => <View style={styles.separator} />}
+              scrollEnabled={false}
+              nestedScrollEnabled
+            />
           </View>
-        </View>
-      )}
+        )}
+        
+        {/* Aluno selecionado */}
+        {selectedAluno && (
+          <View style={styles.selectedAlunoContainer}>
+            <Typography variant="body" color="primary" style={styles.selectedAlunoText}>
+              ✓ {selectedAluno.nome} - Matrícula: {selectedAluno.matricula}
+            </Typography>
+          </View>
+        )}
+      </View>
 
       {/* Picker de tipo de documento */}
       <View style={styles.field}>
@@ -223,6 +255,41 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginTop: 8,
+  },
+  suggestionsContainer: {
+    marginTop: 8,
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    maxHeight: 200,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  suggestionItem: {
+    padding: 12,
+  },
+  suggestionName: {
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+  },
+  selectedAlunoContainer: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+  },
+  selectedAlunoText: {
+    fontWeight: '600',
   },
 });
 

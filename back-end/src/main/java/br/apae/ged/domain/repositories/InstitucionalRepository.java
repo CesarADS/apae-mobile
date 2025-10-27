@@ -18,6 +18,6 @@ public interface InstitucionalRepository extends JpaRepository<Institucional, Lo
 
     Page<Institucional> findAll(Specification<Institucional> spec, Pageable pageableComOrdenacao);
 
-    // Busca todos os documentos institucionais enviados por um usuário específico
-    List<Institucional> findByUploadedBy_Id(Long userId);
+    // Busca todos os documentos institucionais enviados por um usuário específico com paginação
+    Page<Institucional> findByUploadedBy_Id(Long userId, Pageable pageable);
 }

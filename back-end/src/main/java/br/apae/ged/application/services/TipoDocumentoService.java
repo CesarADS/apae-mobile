@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 public class TipoDocumentoService {
 
     private final TipoDocumentoRepository tipoDocumentoRepository;
+    private final LogService logService;
 
     public TipoDocumentoResponse create(TipoDocumentoRequest request) {
         Optional<TipoDocumento> tipoExistenteOpt = tipoDocumentoRepository.findByNomeIgnoreCase(request.nome());
@@ -44,6 +45,13 @@ public class TipoDocumentoService {
                 tipoExistente.setIsAtivo(true);
 
                 TipoDocumento updatedEntity = tipoDocumentoRepository.save(tipoExistente);
+                logService.registrarAcao(
+                        "INFO",
+                        usuarioLogado.getNome(),
+                        usuarioLogado.getEmail(),
+                        "CREATE",
+                        "Tipo de documento " + updatedEntity.getNome() + " reativado com sucesso."
+                );
                 return new TipoDocumentoResponse(updatedEntity);
             }
         } else {
@@ -51,9 +59,17 @@ public class TipoDocumentoService {
             User usuarioLogado = AuthenticationUtil.retriveAuthenticatedUser();
 
 
-            TipoDocumento novoTipoDocumento = TipoDocumento.paraEntidade(request, usuarioLogado);
+            TipoDocumento novoTipoDocumento = new TipoDocumento(request, usuarioLogado);
 
             TipoDocumento savedEntity = tipoDocumentoRepository.save(novoTipoDocumento);
+            String logMessage = String.format("Tipo de documento %s criado com sucesso.", savedEntity.getNome());
+            logService.registrarAcao(
+                    "INFO",
+                    usuarioLogado.getNome(),
+                    usuarioLogado.getEmail(),
+                    "CREATE",
+                    logMessage
+            );
             return new TipoDocumentoResponse(savedEntity);
         }
     }
@@ -87,9 +103,19 @@ public class TipoDocumentoService {
         });
 
 
-        tipoDocumento.atualizarDados(request, AuthenticationUtil.retriveAuthenticatedUser());
+        User user = AuthenticationUtil.retriveAuthenticatedUser();
+        tipoDocumento.atualizarDados(request, user);
 
         TipoDocumento updatedEntity = tipoDocumentoRepository.save(tipoDocumento);
+
+        logService.registrarAcao(
+                "INFO",
+                user.getNome(),
+                user.getEmail(),
+                "UPDATE",
+                "Tipo de documento " + updatedEntity.getNome() + " atualizado com sucesso."
+        );
+
         return new TipoDocumentoResponse(updatedEntity);
     }
 
@@ -99,10 +125,21 @@ public class TipoDocumentoService {
                 .orElseThrow(() -> new NotFoundException("Tipo de Documento não encontrado com o id: " + id));
 
         tipoDocumento.setIsAtivo(!tipoDocumento.getIsAtivo());
-        tipoDocumento.setUsuarioAlteracao(AuthenticationUtil.retriveAuthenticatedUser());
+        User user = AuthenticationUtil.retriveAuthenticatedUser();
+        tipoDocumento.setUsuarioAlteracao(user);
         tipoDocumento.setDataAlteracao(LocalDateTime.now());
 
+        logService.registrarAcao(
+                "INFO",
+                user.getNome(),
+                user.getEmail(),
+                "UPDATE_STATUS",
+                "Status do tipo de documento " + tipoDocumento.getNome() + " alterado para " + (tipoDocumento.getIsAtivo() ? "ATIVO" : "INATIVO")
+        );
+
         tipoDocumentoRepository.save(tipoDocumento);
+
+        
     }
 
     public List<TipoDocumentoResponse> findAllAtivos() {
@@ -112,28 +149,64 @@ public class TipoDocumentoService {
                 .collect(Collectors.toList());
     }
 
-    public Page<TipoDocumentoResponse> buscarTodosGuardaPermanente(Pageable pagina, String termoBusca) {
+    public List<TipoDocumentoResponse> buscarTodosGuardaPermanente() {
         Specification<TipoDocumento> spec = Specification.where(TipoDocumentoSpecification.isAtivo())
                 .and(TipoDocumentoSpecification.isGuardaPermanente())
                 .and(TipoDocumentoSpecification.isNotInstitucional());
-
-        if (termoBusca != null && !termoBusca.isBlank()) {
-            spec = spec.and(TipoDocumentoSpecification.byNome(termoBusca));
-        }
-        return tipoDocumentoRepository.findAll(spec, pagina)
-                .map(TipoDocumentoResponse::new);
+        
+        return tipoDocumentoRepository.findAll(spec)
+                .stream()
+                .map(TipoDocumentoResponse::new)
+                .collect(Collectors.toList());
     }
 
-    public Page<TipoDocumentoResponse> buscarTodosInstitucional(Pageable pagina, String termoBusca) {
+    public List<TipoDocumentoResponse> buscarTodosInstitucional(boolean gerar) {
         Specification<TipoDocumento> spec = Specification.where(TipoDocumentoSpecification.isAtivo())
                 .and(TipoDocumentoSpecification.isInstitucional());
 
-        if (termoBusca != null && termoBusca.isBlank()) {
-            spec = spec.and(TipoDocumentoSpecification.byNome(termoBusca));
+        if (gerar) {
+            spec = spec.and(TipoDocumentoSpecification.isGeravel());
+        } else {
+            spec = spec.and(TipoDocumentoSpecification.isNotGeravel());
         }
 
-        return tipoDocumentoRepository.findAll(spec, pagina)
-                .map(TipoDocumentoResponse::new);
+        return tipoDocumentoRepository.findAll(spec)
+                .stream()
+                .map(TipoDocumentoResponse::new)
+                .collect(Collectors.toList());
     }
 
+    public List<TipoDocumentoResponse> buscarTodosAlunos(boolean gerar) {
+        Specification<TipoDocumento> spec = Specification.where(TipoDocumentoSpecification.isAtivo())
+                .and(TipoDocumentoSpecification.isNotInstitucional())
+                .and(TipoDocumentoSpecification.isNotColaborador());
+
+        if (gerar) {
+            spec = spec.and(TipoDocumentoSpecification.isGeravel());
+        } else {
+            spec = spec.and(TipoDocumentoSpecification.isNotGeravel());
+        }
+
+        return tipoDocumentoRepository.findAll(spec)
+                .stream()
+                .map(TipoDocumentoResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    public List<TipoDocumentoResponse> buscarTodosColaboradores(boolean gerar) {
+        Specification<TipoDocumento> spec = Specification.where(TipoDocumentoSpecification.isAtivo())
+                .and(TipoDocumentoSpecification.isNotInstitucional())
+                .and(TipoDocumentoSpecification.isColaborador());
+
+        if (gerar) {
+            spec = spec.and(TipoDocumentoSpecification.isGeravel());
+        } else {
+            spec = spec.and(TipoDocumentoSpecification.isNotGeravel());
+        }
+
+        return tipoDocumentoRepository.findAll(spec)
+                .stream()
+                .map(TipoDocumentoResponse::new)
+                .collect(Collectors.toList());
+    }
 }

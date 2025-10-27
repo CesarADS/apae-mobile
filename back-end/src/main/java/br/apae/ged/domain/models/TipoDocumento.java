@@ -8,6 +8,8 @@ import jakarta.persistence.ManyToOne;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 
@@ -15,6 +17,8 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @Entity(name = "tb_tipo_documento")
+@SQLDelete(sql = "UPDATE tb_tipo_documento SET deleted_at = now() WHERE id=?")
+@SQLRestriction("deleted_at is null")
 public class TipoDocumento extends EntityID {
 
         @Column(name = "nome")
@@ -47,7 +51,11 @@ public class TipoDocumento extends EntityID {
         @Column
         private boolean documentoAssinavel;
 
-        @Column boolean podeGerarDocumento;
+        @Column
+        private boolean podeGerarDocumento;
+
+        @Column
+        private Boolean colaborador;
 
         public TipoDocumento(String nome, Integer validade, User usuario) {
                 this.nome = nome;
@@ -57,15 +65,6 @@ public class TipoDocumento extends EntityID {
                 this.isAtivo = true;
         }
 
-        public static TipoDocumento paraEntidade(TipoDocumentoRequest request, User usuario) {
-                return new TipoDocumento(
-                        request.nome(),
-                        request.validade(),
-                        usuario
-                );
-        }
-
-
         public void atualizarDados(TipoDocumentoRequest request, User usuario) {
                 this.setNome(request.nome());
                 this.setValidade(request.validade());
@@ -74,6 +73,19 @@ public class TipoDocumento extends EntityID {
                 this.setGuardaPermanente(request.guardaPermanente());
                 this.setInstitucional(request.institucional());
                 this.setDocumentoAssinavel(request.documentoAssinavel());
-                this.setPodeGerarDocumento(request.podeGerarDocumento());
+                this.setPodeGerarDocumento(request.gerarDocumento());
+        }
+
+        public TipoDocumento(TipoDocumentoRequest entrada, User usuario) {
+                this.nome = entrada.nome();
+                this.validade = entrada.validade();
+                this.usuario = usuario;
+                this.dataRegistro = LocalDateTime.now();
+                this.isAtivo = true;
+                this.guardaPermanente = entrada.guardaPermanente();
+                this.institucional = entrada.institucional();
+                this.documentoAssinavel = entrada.documentoAssinavel();
+                this.podeGerarDocumento = entrada.gerarDocumento();
+                this.colaborador = entrada.colaborador();
         }
 }

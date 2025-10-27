@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   AuthState
 } from '../types/auth';
+import { canAccessMobileApp, hasMinimumPermissions } from '../utils/permissions';
 import { useApiClient } from './useApiClient';
 
 export const useAuth = () => {
@@ -49,10 +50,19 @@ export const useAuth = () => {
         }
       }
       
-      // Verificar se tem permissão de DOCUMENTOS
-      if (!permissions.includes('DOCUMENTOS')) {
-        throw new Error('Você não tem permissão para digitalizar documentos');
+      // Verificar se tem permissão mínima para usar o app mobile
+      if (!hasMinimumPermissions(permissions)) {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Você não tem permissão para digitalizar documentos',
+        }));
+        return false;
       }
+      
+      // Obter detalhes de acesso por entidade
+      const userPermissions = canAccessMobileApp(permissions);
+      console.log('Permissões de acesso:', userPermissions);
       
       // Definir o token para requisições futuras
       if (result?.token) {
@@ -63,7 +73,7 @@ export const useAuth = () => {
         ...prev,
         isAuthenticated: true,
         user: null, // TODO: carregar dados do usuário se necessário
-        data: { ...result, permissions }, // Adicionar permissões decodificadas
+        data: { ...result, permissions, userPermissions }, // Adicionar permissões decodificadas
         loading: false,
       }));
       

@@ -5,7 +5,6 @@ public record GerarDocumentoColaboradorDTO(
         String colaborador,
         String tipoDocumento,
         String titulo,
-        String textoCabecalho,
-        String textoRodape
+        String textoCabecalho
 ) {
 }

@@ -4,16 +4,18 @@ import br.apae.ged.application.dto.documentoIstitucional.UploadInstitucionalRequ
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity @Getter @Setter @Table(name = "tb_documentos_institucionais")
+@SQLDelete(sql = "UPDATE tb_documentos_institucionais SET deleted_at = now() WHERE id=?")
+@SQLRestriction("deleted_at is null")
 public class Institucional extends EntityID {
 
     private String titulo;
-    @Column(columnDefinition = "TEXT")
-    private String conteudo;
     private String tipoConteudo;
     private LocalDateTime dataUpload;
     private LocalDateTime dataDownload;
@@ -33,6 +35,13 @@ public class Institucional extends EntityID {
     @ManyToOne
     @JoinColumn
     private User createdBy;
+    @ManyToOne
+    @JoinColumn
+    private User downloadedBy;
+    private LocalDate validade;
+
+    @OneToOne(mappedBy = "institucional", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private InstitucionalContent institucionalContent;
 
     public Institucional() {}
 
@@ -44,7 +53,6 @@ public class Institucional extends EntityID {
         } else {
             this.titulo = entrada.nome();
         }
-        this.conteudo = base64;
         this.tipoConteudo = tConteudo;
         this.isAtivo = true;
         this.dataUpload = LocalDateTime.now();
@@ -52,6 +60,10 @@ public class Institucional extends EntityID {
         this.tipoDocumento = tipoDoc;
         this.uploadedBy = user;
         this.createdBy = user;
-    }
 
+        InstitucionalContent content = new InstitucionalContent();
+        content.setConteudo(base64);
+        content.setInstitucional(this);
+        this.setInstitucionalContent(content);
+    }
 }

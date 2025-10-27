@@ -2,6 +2,8 @@ package br.apae.ged.domain.models;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -19,6 +21,8 @@ import java.util.List;
 @Table(indexes = {
         @Index(name = "email_idx", columnList = "email")
 })
+@SQLDelete(sql = "UPDATE tb_users SET deleted_at = now() WHERE id=?")
+@SQLRestriction("deleted_at is null")
 public class User extends EntityID implements UserDetails{
 
     private String email;
@@ -53,4 +57,5 @@ public class User extends EntityID implements UserDetails{
         if (userGroup == null || userGroup.getPermissions() == null) return List.of();
         return userGroup.getPermissions();
     }
+
 }

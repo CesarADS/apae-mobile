@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+
+import org.hibernate.annotations.DialectOverride.SQLDelete;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -22,7 +24,6 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/colaboradores")
 @RequiredArgsConstructor
 @Tag(name = "Colaboradores", description = "Gerenciamento de Colaboradores")
-@PreAuthorize("hasAuthority('GERENCIAR_COLABORADORES')")
 public class ColaboradorController {
 
     private final ColaboradorService colaboradorService;
@@ -33,6 +34,7 @@ public class ColaboradorController {
             @ApiResponse(responseCode = "400", description = "Dados inválidos ou CPF já existente.", content = @Content)
     })
     @PostMapping
+    @PreAuthorize("hasAuthority('COLABORADOR_WRITE')")
     public ResponseEntity<?> create(@RequestBody ColaboradorRequestDTO request) {
         try {
             return ResponseEntity.status(201).body(colaboradorService.create(request));
@@ -46,6 +48,7 @@ public class ColaboradorController {
             @ApiResponse(responseCode = "200", description = "Lista de colaboradores retornada com sucesso.")
     })
     @GetMapping
+    @PreAuthorize("hasAuthority('COLABORADOR_READ')")
     public ResponseEntity<Page<ColaboradorResponseDTO>> findAll(
             @PageableDefault(size = 10, sort = "nome") Pageable pageable) {
         return ResponseEntity.ok(colaboradorService.findAll(pageable));
@@ -57,6 +60,7 @@ public class ColaboradorController {
             @ApiResponse(responseCode = "400", description = "Colaborador não encontrado para o ID informado.", content = @Content)
     })
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('COLABORADOR_READ')")
     public ResponseEntity<?> findById(
             @Parameter(description = "ID do colaborador a ser buscado.") @PathVariable Long id) {
         try {
@@ -72,6 +76,7 @@ public class ColaboradorController {
             @ApiResponse(responseCode = "400", description = "Dados inválidos ou colaborador não encontrado.", content = @Content)
     })
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('COLABORADOR_WRITE')")
     public ResponseEntity<?> update(
             @Parameter(description = "ID do colaborador a ser atualizado.") @PathVariable Long id,
             @RequestBody ColaboradorRequestDTO request) {
@@ -88,6 +93,7 @@ public class ColaboradorController {
             @ApiResponse(responseCode = "400", description = "Colaborador não encontrado.", content = @Content)
     })
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('COLABORADOR_DELETE')")
     public ResponseEntity<Void> delete(
             @Parameter(description = "ID do colaborador a ser excluído.") @PathVariable Long id) {
         try {

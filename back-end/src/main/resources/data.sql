@@ -5069,13 +5069,25 @@ INSERT INTO tb_cidade (nome, estado_id, ibge) VALUES
 ON CONFLICT DO NOTHING;
 
 INSERT INTO tb_permissions (id, descricao, nome) VALUES
-(1, 'Tela de documentos', 'DOCUMENTOS'),
-(2, 'Tela de alunos', 'ALUNOS'),
-(3, 'SUPER_ADMIN', 'SUPER_ADMIN'),
-(4, 'Tela de permissões', 'GRUPOS_PERMISSOES'),
-(5, 'Gerenciar usuário', 'GERENCIAR_USUARIO'),
-(6, 'Tela tipo documento', 'TIPO_DOCUMENTO'),
-(7, 'Tela de Colaboradores', 'GERENCIAR_COLABORADORES')
+(1, 'Visualizar Alunos', 'ALUNO_READ'),
+(2, 'SUPER_ADMIN', 'SUPER_ADMIN'),
+(3, 'Tela de permissões', 'GRUPOS_PERMISSOES'),
+(4, 'Gerenciar usuário', 'GERENCIAR_USUARIO'),
+(5, 'Tela tipo documento', 'TIPO_DOCUMENTO'),
+(6, 'Visualizar colaboradores', 'COLABORADOR_READ'),
+(7, 'Visualizar Documnetos de Alunos', 'DOCUMENTO_ALUNO_READ'),
+(8, 'Adicionar e Editar Documentos de Alunos', 'DOCUMENTO_ALUNO_WRITE'),
+(9, 'Deletar Documentos de Alunos', 'DOCUMENTO_ALUNO_DELETE'),
+(10, 'Visualizar Documentos de Colaboradores', 'DOCUMENTO_COLABORADOR_READ'),
+(11, 'Adicionar e Editar Documentos de Colaboradores', 'DOCUMENTO_COLABORADOR_WRITE'),
+(12, 'Deletar Documentos de Colaboradores', 'DOCUMENTO_COLABORADOR_DELETE'),
+(13, 'Visualizar Documentos Institucionais', 'DOCUMENTO_INSTITUCIONAL_READ'),
+(14, 'Adicionar e Editar Documentos Institucionais', 'DOCUMENTO_INSTITUCIONAL_WRITE'),
+(15, 'Deletar Documentos Institucionais', 'DOCUMENTO_INSTITUCIONAL_DELETE'),
+(16, 'Adicionar e Editar Colaboradores', 'COLABORADOR_WRITE'),
+(17, 'Deletar Colaboradores', 'COLABORADOR_DELETE'),
+(18, 'Adicionar e Editar Alunos', 'ALUNO_WRITE'),
+(19, 'Deletar Alunos', 'ALUNO_DELETE')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO tb_user_groups (id, nome) VALUES
@@ -5091,8 +5103,31 @@ SELECT * FROM (
         (1, 4),
         (1, 5),
         (1, 6),
-        (1, 7)
+        (1, 7),
+        (1, 8),
+        (1, 9),
+        (1, 10),
+        (1, 11),
+        (1, 12),
+        (1, 13),
+        (1, 14),
+        (1, 15),
+        (1, 16),
+        (1, 17),
+        (1, 18),
+        (1, 19)
 ) AS vals(group_id, permission_id)
 WHERE NOT EXISTS (
     SELECT 1 FROM group_permissions WHERE group_id = 1
+);
+
+CREATE TABLE IF NOT EXISTS user_logs (
+    id SERIAL PRIMARY KEY,
+    event_date TIMESTAMP,
+    level VARCHAR(10),
+    logger VARCHAR(255),
+    message TEXT,
+    nome VARCHAR(255),
+    email VARCHAR(255),
+    acao VARCHAR(255)
 );

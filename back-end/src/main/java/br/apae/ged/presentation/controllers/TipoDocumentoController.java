@@ -114,5 +114,47 @@ public class TipoDocumentoController {
         }
     }
 
+    @Operation(summary = "Lista todos os tipos de documento institucionais", description = "Retorna uma lista não paginada com todos os tipos de documento que estão com status ativo.")
+    @GetMapping("/institucionais")
+    public ResponseEntity<?> buscarTodosInstitucionais(@RequestParam(required = false) boolean gerar) {
+        try {
+            List<TipoDocumentoResponse> listaDeTipos = tipoDocumentoService.buscarTodosInstitucional(gerar);
+            return ResponseEntity.ok(listaDeTipos);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
 
+    @Operation(summary = "Lista todos os tipos de documentos de alunos", description = "Retorna uma lista não paginada com todos os tipos de documento que estão com status ativo.")
+    @GetMapping("/alunos")
+    public ResponseEntity<?> buscarTodosAlunos(@RequestParam(required = false) boolean gerar) {
+        try {
+            List<TipoDocumentoResponse> listaDeTipos = tipoDocumentoService.buscarTodosAlunos(gerar);
+            return ResponseEntity.ok(listaDeTipos);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @Operation(summary = "Lista todos os tipos de documentos de colaboradores", description = "Retorna uma lista não paginada com todos os tipos de documento que estão com status ativo.")
+    @GetMapping("/colaboradores")
+    public ResponseEntity<?> buscarTodosColaboradores(@RequestParam(required = false) boolean gerar) {
+        try {
+            List<TipoDocumentoResponse> listaDeTipos = tipoDocumentoService.buscarTodosColaboradores(gerar);
+            return ResponseEntity.ok(listaDeTipos);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @Operation(summary = "Lista todos os tipos de documentos de guarda permanente", description = "Retorna uma lista não paginada com todos os tipos de documento que estão com status ativo.")
+    @GetMapping("/guarda-permanente")
+    public ResponseEntity<?> buscarTodosGuardaPermanente(@RequestParam(required = false) String termoBusca) {
+        try {
+            List<TipoDocumentoResponse> listaDeTipos = tipoDocumentoService.buscarTodosGuardaPermanente();
+            return ResponseEntity.ok(listaDeTipos);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
 }

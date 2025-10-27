@@ -26,7 +26,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/alunos")
 @RequiredArgsConstructor
 @Tag(name = "Alunos", description = "Endpoints para o gerenciamento completo de Alunos.")
-@PreAuthorize("hasAuthority('ALUNOS')")
 public class AlunoController {
 
     private final AlunoService alunoService;
@@ -38,6 +37,7 @@ public class AlunoController {
             @ApiResponse(responseCode = "400", description = "Dados inválidos ou CPF já existente.", content = @Content)
     })
     @PostMapping("/create")
+    @PreAuthorize("hasAuthority('ALUNO_WRITE')")
     public ResponseEntity<?> post(@RequestBody AlunoRequestDTO request) {
         try {
             return ResponseEntity.status(201).body(alunoService.create(request));
@@ -53,6 +53,7 @@ public class AlunoController {
             @ApiResponse(responseCode = "500", description = "Erro inesperado no servidor durante o processamento do arquivo.", content = @Content)
     })
     @PostMapping(value = "/importar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('ALUNO_WRITE')")
     public ResponseEntity<?> importarAlunos(
             @Parameter(description = "Arquivo Excel (.xlsx) contendo os dados dos alunos.") @RequestParam("file") MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -75,6 +76,7 @@ public class AlunoController {
             @ApiResponse(responseCode = "200", description = "Lista de alunos retornada com sucesso.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Page.class)))
     })
     @GetMapping("/all")
+    @PreAuthorize("hasAuthority('ALUNO_READ')")
     public ResponseEntity<?> findAll(
             @Parameter(description = "Termo para busca por nome, CPF ou matrícula do aluno.") @RequestParam(required = false) String termoBusca,
             @PageableDefault(size = 10, sort = "nome") Pageable pageable) {
@@ -92,6 +94,7 @@ public class AlunoController {
             @ApiResponse(responseCode = "400", description = "Aluno não encontrado para o ID informado.", content = @Content)
     })
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('ALUNO_READ')")
     public ResponseEntity<?> byID(@Parameter(description = "ID do aluno a ser buscado.") @PathVariable("id") Long id) {
         try {
             return ResponseEntity.ok(alunoService.byID(id));
@@ -106,6 +109,7 @@ public class AlunoController {
             @ApiResponse(responseCode = "400", description = "Dados inválidos ou aluno não encontrado.", content = @Content)
     })
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ALUNO_WRITE')")
     public ResponseEntity<?> update(
             @Parameter(description = "ID do aluno a ser atualizado.") @PathVariable("id") Long id,
             @RequestBody AlunoRequestDTO aluno) {
@@ -122,6 +126,7 @@ public class AlunoController {
             @ApiResponse(responseCode = "400", description = "Aluno não encontrado.", content = @Content)
     })
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ALUNO_DELETE')")
     public ResponseEntity<?> desativarAluno(
             @Parameter(description = "ID do aluno para alterar o status.") @PathVariable("id") Long id) {
         try {

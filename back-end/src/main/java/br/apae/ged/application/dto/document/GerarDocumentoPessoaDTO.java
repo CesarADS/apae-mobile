@@ -4,6 +4,5 @@ public record GerarDocumentoPessoaDTO(
         String texto,
         Long pessoaId,
         String tipoDocumento,
-        String textoCabecalho,
-        String textoRodape) {
+        String textoCabecalho) {
 }

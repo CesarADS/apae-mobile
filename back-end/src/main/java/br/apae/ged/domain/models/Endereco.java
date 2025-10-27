@@ -4,6 +4,10 @@ package br.apae.ged.domain.models;
 import br.apae.ged.application.dto.aluno.AlunoRequestDTO;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -12,6 +16,8 @@ import lombok.*;
 @ToString
 @Builder
 @Entity(name = "tb_endereco")
+@SQLDelete(sql = "UPDATE tb_endereco SET deleted_at = now() WHERE id=?")
+@SQLRestriction("deleted_at is null")
 public class Endereco extends EntityID{
 
     private String bairro;
@@ -19,6 +25,7 @@ public class Endereco extends EntityID{
     private int numero;
     private String complemento;
     private String cep;
+    private LocalDateTime deletedAt;
 
     @OneToOne
     @JoinColumn(name = "aluno_id", referencedColumnName = "id")

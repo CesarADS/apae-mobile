@@ -7,6 +7,8 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Getter
 @Setter
@@ -16,6 +18,8 @@ import java.time.LocalDateTime;
 @Builder
 @Entity
 @Table(name = "tb_aluno")
+@SQLDelete(sql = "UPDATE tb_aluno SET deleted_at = now() WHERE id=?")
+@SQLRestriction("deleted_at is null")
 @PrimaryKeyJoinColumn(name = "id")
 public class Alunos extends Pessoa {
 
@@ -25,6 +29,7 @@ public class Alunos extends Pessoa {
     private String telefone;
     private LocalDate dataEntrada;
     private String observacoes;
+    private LocalDateTime deletedAt;
 
     @OneToOne(mappedBy = "aluno", cascade = CascadeType.ALL, orphanRemoval = true)
     private Endereco endereco;

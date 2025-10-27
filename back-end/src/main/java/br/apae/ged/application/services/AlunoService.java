@@ -38,7 +38,7 @@ public class AlunoService {
     private final PessoaRepository pessoaRepository;
     private final EnderecoRepository enderecoRepository;
     private final CidadeRepository cidadeRepository;
-
+    private final LogService logService;
 
 
     public Alunos create(AlunoRequestDTO request) {
@@ -57,11 +57,22 @@ public class AlunoService {
         alunoNovo.setEndereco(enderecoNovo);
         enderecoNovo.setAluno(alunoNovo);
 
-        alunoNovo.setCreatedBy(AuthenticationUtil.retriveAuthenticatedUser());
+        User user = AuthenticationUtil.retriveAuthenticatedUser();
+        alunoNovo.setCreatedBy(user);
         alunoNovo.setIsAtivo(true);
         alunoNovo.setCreatedAt(LocalDateTime.now());
 
-        return alunoRepository.save(alunoNovo);
+        Alunos savedAluno = alunoRepository.save(alunoNovo);
+
+        logService.registrarAcao(
+                "INFO",
+                user.getNome(),
+                user.getEmail(),
+                "CREATE",
+                "Aluno " + savedAluno.getNome() + " criado com sucesso."
+        );
+
+        return savedAluno;
     }
 
     private String getCellValueAsString(Cell cell) {
@@ -170,6 +181,15 @@ public class AlunoService {
                 alunosProcessados.add(alunoRepository.save(alunoParaSalvar));
             }
         }
+
+        logService.registrarAcao(
+                "INFO",
+                usuarioLogado.getNome(),
+                usuarioLogado.getEmail(),
+                "IMPORT",
+                "Importação de " + alunosProcessados.size() + " alunos concluída."
+        );
+
         return alunosProcessados;
     }
 
@@ -209,6 +229,15 @@ public class AlunoService {
         byId.setIsAtivo(!byId.getIsAtivo());
 
         alunoRepository.save(byId);
+
+        User user = AuthenticationUtil.retriveAuthenticatedUser();
+        logService.registrarAcao(
+                "INFO",
+                user.getNome(),
+                user.getEmail(),
+                "UPDATE",
+                "Status do aluno " + byId.getNome() + " alterado para " + (byId.getIsAtivo() ? "ATIVO" : "INATIVO")
+        );
     }
 
 
@@ -217,11 +246,22 @@ public class AlunoService {
         var cidade = cidadeRepository.findByIbge(atualizacao.ibge())
                 .orElseThrow(() -> new NotFoundException("Cidade não encontrada"));
 
-        byID.atualizarDados(atualizacao, AuthenticationUtil.retriveAuthenticatedUser());
+        User user = AuthenticationUtil.retriveAuthenticatedUser();
+        byID.atualizarDados(atualizacao, user);
         Endereco endereco = enderecoRepository.findByAluno(byID);
         endereco.atualizarDados(atualizacao, cidade);
 
         enderecoRepository.save(endereco);
-        return alunoRepository.save(byID);
+        Alunos updatedAluno = alunoRepository.save(byID);
+
+        logService.registrarAcao(
+                "INFO",
+                user.getNome(),
+                user.getEmail(),
+                "UPDATE",
+                "Aluno " + updatedAluno.getNome() + " atualizado com sucesso."
+        );
+
+        return updatedAluno;
     }
 }

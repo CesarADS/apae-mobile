@@ -9,16 +9,27 @@ import { Document } from '../types';
 
 export default function DashboardScreen() {
   const { logout } = useAuth();
-  const { loading, error, fetchRecentDocuments, clearError } = useDocuments();
-  const [recentDocuments, setRecentDocuments] = useState<Document[]>([]);
+  const { loading, loadingMore, hasMore, error, fetchAllDocuments, clearError } = useDocuments();
+  const [allDocuments, setAllDocuments] = useState<Document[]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
 
   useEffect(() => {
-    loadRecentDocuments();
+    loadDocuments();
   }, []);
 
-  const loadRecentDocuments = async () => {
-    const documents = await fetchRecentDocuments();
-    setRecentDocuments(documents);
+  const loadDocuments = async () => {
+    const documents = await fetchAllDocuments(0);
+    setAllDocuments(documents);
+    setCurrentPage(0);
+  };
+
+  const loadMoreDocuments = async () => {
+    if (!hasMore || loadingMore) return;
+    
+    const nextPage = currentPage + 1;
+    const moreDocuments = await fetchAllDocuments(nextPage);
+    setAllDocuments(prev => [...prev, ...moreDocuments]);
+    setCurrentPage(nextPage);
   };
 
   const handleDigitalizeDocument = () => {
@@ -27,7 +38,7 @@ export default function DashboardScreen() {
 
   const handleRefresh = () => {
     if (error) clearError();
-    loadRecentDocuments();
+    loadDocuments();
   };
 
   const formatDate = (dateString: string) => {
@@ -128,7 +139,7 @@ export default function DashboardScreen() {
         {/* Lista de documentos recentes - Metade inferior */}
         <View style={styles.documentsSection}>
           <Typography variant="h3" color="primary" style={styles.sectionTitle}>
-            Documentos Recentes
+            Todos os Documentos
           </Typography>
           
           {error && (
@@ -150,14 +161,24 @@ export default function DashboardScreen() {
                 Carregando documentos...
               </Typography>
             </View>
-          ) : recentDocuments.length > 0 ? (
+          ) : allDocuments.length > 0 ? (
             <FlatList
-              data={recentDocuments}
+              data={allDocuments}
               renderItem={renderDocumentItem}
               keyExtractor={(item) => `${item.type}-${item.id}`}
               style={styles.documentsList}
               showsVerticalScrollIndicator={false}
-              scrollEnabled={false}
+              onEndReached={loadMoreDocuments}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={
+                loadingMore ? (
+                  <View style={styles.loadingMoreContainer}>
+                    <Typography variant="body" color="secondary">
+                      Carregando mais...
+                    </Typography>
+                  </View>
+                ) : null
+              }
             />
           ) : (
             <View style={styles.emptyContainer}>
@@ -291,5 +312,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
     padding: 8,
     alignSelf: 'center',
+  },
+  loadingMoreContainer: {
+    padding: 16,
+    alignItems: 'center',
   },
 });

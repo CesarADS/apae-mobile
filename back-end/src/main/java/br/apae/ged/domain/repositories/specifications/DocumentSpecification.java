@@ -1,7 +1,9 @@
+
 package br.apae.ged.domain.repositories.specifications;
 
 import br.apae.ged.domain.models.Document;
 import br.apae.ged.domain.models.Pessoa;
+import br.apae.ged.domain.models.TipoDocumento;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
@@ -44,5 +46,12 @@ public class DocumentSpecification {
 
     public static Specification<Document> isAtivo() {
         return (root, query, cb) -> cb.isTrue(root.get("isAtivo"));
+    }
+
+    public static Specification<Document> isPermanente() {
+        return (root, query, cb) -> {
+            Join<Document, TipoDocumento> tipoDocumentoJoin = root.join("tipoDocumento");
+            return cb.isTrue(tipoDocumentoJoin.get("guardaPermanente"));
+        };
     }
 }

@@ -8,9 +8,14 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+
 @Getter
 @Setter
 @Entity
+@SQLDelete(sql = "UPDATE tb_pessoa SET is_ativo = false WHERE id = ?")
+@SQLRestriction("deleted_at is null")
 @Table(name = "tb_pessoa")
 @Inheritance(strategy = InheritanceType.JOINED)
 public abstract class Pessoa extends EntityID {

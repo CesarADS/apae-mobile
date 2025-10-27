@@ -4,10 +4,18 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface UserPermissions {
+  canAccessAluno: boolean;
+  canAccessColaborador: boolean;
+  canAccessInstituicao: boolean;
+  permissions: string[];
+}
+
 export interface LoginResponse {
   token: string;
   expiresAt: string;
   permissions: string[];
+  userPermissions?: UserPermissions;
 }
 
 export interface ForgotPasswordRequest {

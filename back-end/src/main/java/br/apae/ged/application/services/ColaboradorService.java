@@ -6,6 +6,7 @@ import br.apae.ged.application.exceptions.BusinessException;
 import br.apae.ged.application.exceptions.NotFoundException;
 import br.apae.ged.domain.models.Colaborador;
 import br.apae.ged.domain.models.Pessoa;
+import br.apae.ged.domain.models.User;
 import br.apae.ged.domain.repositories.ColaboradorRepository;
 import br.apae.ged.domain.repositories.PessoaRepository;
 import br.apae.ged.domain.utils.AuthenticationUtil;
@@ -21,9 +22,9 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class ColaboradorService {
-
     private final ColaboradorRepository colaboradorRepository;
     private final PessoaRepository pessoaRepository;
+    private final LogService logService;
 
     public ColaboradorResponseDTO create(ColaboradorRequestDTO request) {
         CPF cpf = new CPF(request.cpf());
@@ -38,12 +39,21 @@ public class ColaboradorService {
         colaborador.setCpf(cpf);
         colaborador.setCargo(request.cargo());
 
-        // Atribuindo campos de auditoria
+        User user = AuthenticationUtil.retriveAuthenticatedUser();
         colaborador.setIsAtivo(true);
-        colaborador.setCreatedBy(AuthenticationUtil.retriveAuthenticatedUser());
+        colaborador.setCreatedBy(user);
         colaborador.setCreatedAt(LocalDateTime.now());
 
         Colaborador savedColaborador = colaboradorRepository.save(colaborador);
+
+        logService.registrarAcao(
+                "INFO",
+                user.getNome(),
+                user.getEmail(),
+                "CREATE",
+                "Colaborador " + savedColaborador.getNome() + " criado com sucesso."
+        );
+
         return ColaboradorResponseDTO.fromEntity(savedColaborador);
     }
 
@@ -73,18 +83,36 @@ public class ColaboradorService {
         colaborador.setCpf(cpf);
         colaborador.setCargo(request.cargo());
 
-        // Atribuindo campos de auditoria
-        colaborador.setUpdatedBy(AuthenticationUtil.retriveAuthenticatedUser());
+        User user = AuthenticationUtil.retriveAuthenticatedUser();
+        colaborador.setUpdatedBy(user);
         colaborador.setUpdatedAt(LocalDateTime.now());
 
         Colaborador updatedColaborador = colaboradorRepository.save(colaborador);
+
+        logService.registrarAcao(
+                "INFO",
+                user.getNome(),
+                user.getEmail(),
+                "UPDATE",
+                "Colaborador " + updatedColaborador.getNome() + " atualizado com sucesso."
+        );
+
         return ColaboradorResponseDTO.fromEntity(updatedColaborador);
     }
 
     public void delete(Long id) {
-        if (!colaboradorRepository.existsById(id)) {
-            throw new NotFoundException("Colaborador não encontrado com o id: " + id);
-        }
+        Colaborador colaborador = colaboradorRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Colaborador não encontrado com o id: " + id));
+
         colaboradorRepository.deleteById(id);
+
+        User user = AuthenticationUtil.retriveAuthenticatedUser();
+        logService.registrarAcao(
+                "INFO",
+                user.getNome(),
+                user.getEmail(),
+                "DELETE",
+                "Colaborador " + colaborador.getNome() + " deletado com sucesso."
+        );
     }
 }

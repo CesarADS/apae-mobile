@@ -1,19 +1,14 @@
 package br.apae.ged.application.services;
 
 import br.apae.ged.application.dto.document.DocumentUploadResponseDTO;
+import br.apae.ged.application.dto.document.DownloadDTO;
 import br.apae.ged.application.dto.document.GerarDocumentoPessoaDTO;
-import br.apae.ged.application.dto.documentoIstitucional.InstitucionalDTO;
-import br.apae.ged.application.dto.documentoIstitucional.InstucionalResponse;
-import br.apae.ged.application.dto.documentoIstitucional.UploadInstitucionalRequest;
-import br.apae.ged.application.dto.documentoIstitucional.AtualizarInstitucionalRequest;
-import br.apae.ged.application.dto.documentoIstitucional.GerarDocInstitucionalRequest;
-import br.apae.ged.application.dto.documentoIstitucional.InstucionalUploadResponse;
+import br.apae.ged.application.dto.documentoIstitucional.*;
 import br.apae.ged.application.exceptions.NotFoundException;
 import br.apae.ged.application.exceptions.ValidationException;
-import br.apae.ged.domain.models.Institucional;
-import br.apae.ged.domain.models.TipoDocumento;
-import br.apae.ged.domain.repositories.InstitucionalRepository;
-import br.apae.ged.domain.repositories.TipoDocumentoRepository;
+import br.apae.ged.domain.models.*;
+import br.apae.ged.domain.repositories.*;
+import br.apae.ged.domain.repositories.specifications.InstituicionalSpecification;
 import br.apae.ged.domain.utils.AuthenticationUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -29,6 +25,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
+import java.util.Random;
 
 
 @Service
@@ -36,16 +33,16 @@ import java.util.List;
 public class InstitucionalService {
 
     private final InstitucionalRepository institucionalRepository;
+    private final InstitucionalContentRepository institucionalContentRepository;
     private final TipoDocumentoRepository tipoDocumentoRepository;
-    private final GeracaoPdfService pdfGenerationService;
+    private final PdfService pdfService;
+    private final EmailService emailService;
+    private final LogService logService;
 
-    /**
-     * Retorna todos os documentos institucionais enviados pelo usuário logado
-     */
-    public List<InstitucionalDTO> listarMeusDocumentosInstitucionais() {
+    public Page<InstitucionalDTO> listarMeusDocumentosInstitucionais(Pageable pageable) {
         var usuario = AuthenticationUtil.retriveAuthenticatedUser();
-        var docs = institucionalRepository.findByUploadedBy_Id(usuario.getId());
-        return docs.stream().map(doc -> new InstitucionalDTO(
+        var docsPage = institucionalRepository.findByUploadedBy_Id(usuario.getId(), pageable);
+        return docsPage.map(doc -> new InstitucionalDTO(
             doc.getId(),
             doc.getTitulo(),
             doc.getTipoDocumento() != null ? doc.getTipoDocumento().getNome() : null,
@@ -53,7 +50,7 @@ public class InstitucionalService {
             doc.isAtivo(),
             doc.getDataUpload(),
             doc.getUploadedBy() != null ? doc.getUploadedBy().getNome() : null
-        )).toList();
+        ));
     }
 
     public byte[] gerarPdf(GerarDocInstitucionalRequest entrada) throws Exception {
@@ -62,16 +59,25 @@ public class InstitucionalService {
                 entrada.texto(),
                 null,
                 entrada.tipoDocumento(),
-                entrada.titulo(),
-                entrada.rodape()
+                entrada.titulo()
             );
-            
-            return pdfGenerationService.generatePdf(dto);
+
+            User user = AuthenticationUtil.retriveAuthenticatedUser();
+            logService.registrarAcao(
+                    "INFO",
+                    user.getNome(),
+                    user.getEmail(),
+                    "GENERATE_PDF",
+                    "Documento Institucional PDF gerado com o titulo: " + entrada.titulo()
+            );
+
+            return pdfService.gerarPdf(dto);
         } catch (Exception e) {
             throw new Exception("Não foi possível criar o PDF: " + e.getMessage(), e);
         }
     }
 
+    @Transactional
     public InstucionalUploadResponse uploadDocumento (UploadInstitucionalRequest entrada) throws IOException {
         MultipartFile documento = entrada.documento();
         if (documento == null || documento.isEmpty()){
@@ -90,10 +96,20 @@ public class InstitucionalService {
         String base64 = Base64.getEncoder().encodeToString(documento.getBytes());
         String tConteudo = documento.getContentType();
 
-        institucionalRepository.save( new Institucional(entrada, base64, tConteudo, tipoDoc, usuario));
+        Institucional savedDoc = institucionalRepository.save( new Institucional(entrada, base64, tConteudo, tipoDoc, usuario));
+
+        logService.registrarAcao(
+                "INFO",
+                usuario.getNome(),
+                usuario.getEmail(),
+                "UPLOAD",
+                "Documento institucional " + savedDoc.getTitulo() + " carregado com sucesso."
+        );
+
         return new InstucionalUploadResponse(entrada.nome());
     }
 
+    @Transactional
     public DocumentUploadResponseDTO gerarESalvarPdf(GerarDocInstitucionalRequest dto) throws Exception {
         byte[] pdfBytes = gerarPdf(dto);
         String base64 = Base64.getEncoder().encodeToString(pdfBytes);
@@ -105,15 +121,25 @@ public class InstitucionalService {
 
         Institucional institucional = new Institucional();
         institucional.setTitulo(dto.titulo() != null ? dto.titulo() : "Documento Sem Título");
-        institucional.setConteudo(base64);
         institucional.setTipoConteudo("application/pdf");
         institucional.setDataDocumento(LocalDate.now());
         institucional.setDataUpload(LocalDateTime.now());
         institucional.setAtivo(true);
         institucional.setUploadedBy(usuario);
         institucional.setTipoDocumento(tipoDoc);
+        institucional.setValidade(LocalDate.now().plusDays(tipoDoc.getValidade()));
+
+        setInstitucionalContent(institucional, base64);
         
         Institucional docSalvo = institucionalRepository.save(institucional);
+
+        logService.registrarAcao(
+                "INFO",
+                usuario.getNome(),
+                usuario.getEmail(),
+                "GENERATE_AND_SAVE_PDF",
+                "Documento institucional " + docSalvo.getTitulo() + " gerado e salvo com sucesso."
+        );
 
         return new DocumentUploadResponseDTO(docSalvo.getId(), "Documento institucional gerado e salvo com sucesso!");
     }
@@ -149,6 +175,7 @@ public class InstitucionalService {
         return documentPage.map(InstucionalResponse::new);
     }
 
+    @Transactional(readOnly = true)
     public InstucionalResponse visualizarUm(Long id) {
         var institucional = institucionalRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Não foi possível encontrar o documento institucional"));
@@ -156,7 +183,7 @@ public class InstitucionalService {
         return new InstucionalResponse(institucional);
     }
 
-
+    @Transactional
     public InstucionalResponse atualizar (Long id, AtualizarInstitucionalRequest dto) throws IOException {
         var institucional = institucionalRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Não foi possível encontrar o documento institucional"));
@@ -176,7 +203,7 @@ public class InstitucionalService {
             MultipartFile documento = dto.file();
             String base64 = Base64.getEncoder().encodeToString(documento.getBytes());
             String tConteudo = documento.getContentType();
-            institucional.setConteudo(base64);
+            setInstitucionalContent(institucional, base64);
             institucional.setTipoConteudo(tConteudo);
             institucional.setDataDocumento(dto.dataCriacao());
             institucional.setTitulo(dto.titulo());
@@ -184,9 +211,19 @@ public class InstitucionalService {
                     .orElseThrow(() -> new NotFoundException("Tipo de documento não encontrado")));
         }
 
-        institucional.setUpdatedBy(AuthenticationUtil.retriveAuthenticatedUser());
+        User user = AuthenticationUtil.retriveAuthenticatedUser();
+        institucional.setUpdatedBy(user);
         institucional.setDataUpdate(LocalDateTime.now());
         Institucional docAtualizado = institucionalRepository.save(institucional);
+
+        logService.registrarAcao(
+                "INFO",
+                user.getNome(),
+                user.getEmail(),
+                "UPDATE",
+                "Documento institucional " + docAtualizado.getTitulo() + " atualizado com sucesso."
+        );
+
         return new InstucionalResponse(docAtualizado);
     }
 
@@ -194,8 +231,58 @@ public class InstitucionalService {
         var institucional = institucionalRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Não foi possível encontrar o documento institucional"));
         institucional.setAtivo(false);
-        institucional.setUpdatedBy(AuthenticationUtil.retriveAuthenticatedUser());
+        User user = AuthenticationUtil.retriveAuthenticatedUser();
+        institucional.setUpdatedBy(user);
         institucional.setDataUpdate(LocalDateTime.now());
         institucionalRepository.save(institucional);
+
+        logService.registrarAcao(
+                "INFO",
+                user.getNome(),
+                user.getEmail(),
+                "INACTIVATE",
+                "Documento institucional " + institucional.getTitulo() + " inativado com sucesso."
+        );
+    }
+
+    public Page<InstucionalResponse> listarPermanente (String termoBusca, Pageable pageable) {
+        Specification<Institucional> specFinal = Specification.where(InstituicionalSpecification.isAtivo()
+                .and(InstituicionalSpecification.isPermanente()));
+
+        if (termoBusca != null){
+            specFinal = specFinal.and(InstituicionalSpecification.byTitulo(termoBusca));
+        }
+
+        return institucionalRepository.findAll(specFinal, pageable)
+                .map(InstucionalResponse::new);
+    }
+
+    @Transactional(readOnly = true)
+    public DownloadDTO download(Long id) {
+        Institucional documento = institucionalRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Documento não encontrado"));
+
+        byte[] conteudo = getInstitucionalBytes(documento);
+        String nomeArquivo = documento.getTitulo() + ".pdf";
+
+        return new DownloadDTO(nomeArquivo, conteudo, documento.getTipoConteudo());
+    }
+
+    private byte[] getInstitucionalBytes(Institucional document) {
+        InstitucionalContent content = document.getInstitucionalContent();
+        if (content == null || content.getConteudo() == null) {
+            return new byte[0];
+        }
+        return Base64.getDecoder().decode(content.getConteudo());
+    }
+
+    private void setInstitucionalContent(Institucional document, String base64Content) {
+        InstitucionalContent content = document.getInstitucionalContent();
+        if (content == null) {
+            content = new InstitucionalContent();
+            content.setInstitucional(document);
+            document.setInstitucionalContent(content);
+        }
+        content.setConteudo(base64Content);
     }
 }

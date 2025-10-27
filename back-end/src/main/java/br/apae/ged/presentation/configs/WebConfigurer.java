@@ -45,6 +45,7 @@ public class WebConfigurer {
                         .requestMatchers("/alunos/schedule").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/forgot-password").permitAll()
                         .requestMatchers(HttpMethod.POST, "/user/reset-password").permitAll()
+                        .requestMatchers("/publica/**").permitAll()
                         .requestMatchers(
                                 "/auth/**",
                               "/swagger-ui/**",

@@ -4,9 +4,15 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Container, Typography } from '../../components';
+import { useAuth } from '../../hooks';
 import { EntityType } from '../../types';
 
 export default function SelectEntityScreen() {
+  const { data } = useAuth();
+  
+  // Obter permissões do usuário
+  const userPermissions = data?.userPermissions;
+  
   const handleSelectEntity = (entityType: EntityType) => {
     console.log('Selecionando entidade:', entityType);
     // Navegar para a tela de formulário passando o tipo de entidade
@@ -14,7 +20,7 @@ export default function SelectEntityScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Container style={styles.content}>
         <Typography variant="h2" color="primary" align="center" style={styles.title}>
           Digitalizar Documento
@@ -25,59 +31,68 @@ export default function SelectEntityScreen() {
         </Typography>
 
         <View style={styles.optionsContainer}>
-          <TouchableOpacity
-            style={[styles.optionCard, styles.alunoCard]}
-            onPress={() => handleSelectEntity('aluno')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.iconContainer}>
-              <Typography variant="h1" style={{ fontSize: 48 }}>
-                🎓
+          {/* Card Aluno - Só aparece se tiver permissão */}
+          {userPermissions?.canAccessAluno && (
+            <TouchableOpacity
+              style={[styles.optionCard, styles.alunoCard]}
+              onPress={() => handleSelectEntity('aluno')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.iconContainer}>
+                <Typography variant="h1" style={{ fontSize: 48 }}>
+                  🎓
+                </Typography>
+              </View>
+              <Typography variant="h3" style={{ color: '#FFF' }} align="center">
+                Aluno
               </Typography>
-            </View>
-            <Typography variant="h3" style={{ color: '#FFF' }} align="center">
-              Aluno
-            </Typography>
-            <Typography variant="body" style={{ color: '#FFF', opacity: 0.9 }} align="center">
-              Documentos pessoais de alunos
-            </Typography>
-          </TouchableOpacity>
+              <Typography variant="body" style={{ color: '#FFF', opacity: 0.9 }} align="center">
+                Documentos pessoais de alunos
+              </Typography>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            style={[styles.optionCard, styles.colaboradorCard]}
-            onPress={() => handleSelectEntity('colaborador')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.iconContainer}>
-              <Typography variant="h1" style={{ fontSize: 48 }}>
-                👔
+          {/* Card Colaborador - Só aparece se tiver permissão */}
+          {userPermissions?.canAccessColaborador && (
+            <TouchableOpacity
+              style={[styles.optionCard, styles.colaboradorCard]}
+              onPress={() => handleSelectEntity('colaborador')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.iconContainer}>
+                <Typography variant="h1" style={{ fontSize: 48 }}>
+                  👔
+                </Typography>
+              </View>
+              <Typography variant="h3" style={{ color: '#FFF' }} align="center">
+                Colaborador
               </Typography>
-            </View>
-            <Typography variant="h3" style={{ color: '#FFF' }} align="center">
-              Colaborador
-            </Typography>
-            <Typography variant="body" style={{ color: '#FFF', opacity: 0.9 }} align="center">
-              Documentos de colaboradores
-            </Typography>
-          </TouchableOpacity>
+              <Typography variant="body" style={{ color: '#FFF', opacity: 0.9 }} align="center">
+                Documentos de colaboradores
+              </Typography>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            style={[styles.optionCard, styles.instituicaoCard]}
-            onPress={() => handleSelectEntity('instituicao')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.iconContainer}>
-              <Typography variant="h1" style={{ fontSize: 48 }}>
-                🏛️
+          {/* Card Instituição - Só aparece se tiver permissão */}
+          {userPermissions?.canAccessInstituicao && (
+            <TouchableOpacity
+              style={[styles.optionCard, styles.instituicaoCard]}
+              onPress={() => handleSelectEntity('instituicao')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.iconContainer}>
+                <Typography variant="h1" style={{ fontSize: 48 }}>
+                  🏛️
+                </Typography>
+              </View>
+              <Typography variant="h3" style={{ color: '#FFF' }} align="center">
+                Instituição
               </Typography>
-            </View>
-            <Typography variant="h3" style={{ color: '#FFF' }} align="center">
-              Instituição
-            </Typography>
-            <Typography variant="body" style={{ color: '#FFF', opacity: 0.9 }} align="center">
-              Documentos institucionais
-            </Typography>
-          </TouchableOpacity>
+              <Typography variant="body" style={{ color: '#FFF', opacity: 0.9 }} align="center">
+                Documentos institucionais
+              </Typography>
+            </TouchableOpacity>
+          )}
         </View>
 
         <TouchableOpacity

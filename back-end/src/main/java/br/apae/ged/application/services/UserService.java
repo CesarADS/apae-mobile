@@ -1,18 +1,5 @@
 package br.apae.ged.application.services;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Random;
-import java.util.stream.Collectors;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
 import br.apae.ged.application.dto.ChangePasswordDTO;
 import br.apae.ged.application.dto.senha.ForgotPasswordDTO;
 import br.apae.ged.application.dto.senha.ResetPasswordDTO;
@@ -30,6 +17,18 @@ import br.apae.ged.domain.utils.AuthenticationUtil;
 import br.apae.ged.presentation.configs.TokenService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,18 +41,30 @@ public class UserService {
     private final List<NewUserValidationStrategy> userValidationStrategies;
     private final UserGroupRepository userGroupRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LogService logService;
 
     public UserResponse register(UserRequestDTO entity) {
+        User authenticatedUser = AuthenticationUtil.retriveAuthenticatedUser();
 
         userValidationStrategies.forEach(validation -> validation.validate(entity));
 
-        User user = UserRequestDTO.toEntity(entity);
+        User newUser = UserRequestDTO.toEntity(entity);
         UserGroup group = userGroupRepository.findById(entity.groupId())
                 .orElseThrow(() -> new NotFoundException("Grupo não encontrado"));
-        user.setUserGroup(group);
-        user.setIsAtivo(true);
-        var save = userRepository.save(user);
-        return UserResponse.fromEntity(save);
+        newUser.setUserGroup(group);
+        newUser.setIsAtivo(true);
+        var savedUser = userRepository.save(newUser);
+
+        String logMessage = String.format("Usuário '%s' registrou um novo usuário: '%s'", authenticatedUser.getNome(), savedUser.getNome());
+        logService.registrarAcao(
+            "INFO",
+            authenticatedUser.getNome(),
+            authenticatedUser.getEmail(),
+            "REGISTER_USER",
+            logMessage
+        );
+
+        return UserResponse.fromEntity(savedUser);
     }
 
     public UserLoginResponseDTO login(UserLoginDTO userLoginDetails) {
@@ -77,7 +88,7 @@ public class UserService {
                         .orElseThrow(() -> new NotFoundException("Grupo não encontrado"));
 
                 user.setUserGroup(group);
-                
+
                 user.setIsAtivo(true);
 
                 userRepository.save(user);
@@ -89,27 +100,44 @@ public class UserService {
         var usernamePassword = new UsernamePasswordAuthenticationToken(userLoginDetails.email(), userLoginDetails.password());
         var auth = authenticationManager.authenticate(usernamePassword);
         var user = (User) auth.getPrincipal();
-        var token = tokenService.generateToken(user);
-        var expiresAt = LocalDateTime.now().plusMinutes(120);
         List<String> permissions = user.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
+        var token = tokenService.generateToken(user, permissions);
 
-        return new UserLoginResponseDTO(token, expiresAt, permissions);
+        // Log user action
+        String logMessage = String.format("%s realizou login", user.getNome());
+        logService.registrarAcao("INFO",user.getNome(), user.getEmail(), "LOGIN", logMessage);
+
+        var expiresAt = LocalDateTime.now().plusMinutes(120);
+
+
+        return new UserLoginResponseDTO(token, expiresAt);
     }
 
     public void changeStatusUser(Long id) {
-        User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException("Usuário não encontrado"));
+        User authenticatedUser = AuthenticationUtil.retriveAuthenticatedUser();
+        User userToChange = userRepository.findById(id).orElseThrow(() -> new NotFoundException("Usuário não encontrado"));
 
-        if (!user.getIsAtivo()) {
-            user.setIsAtivo(true);
-            userRepository.save(user);
-            return;
-        }
+        String oldStatus = userToChange.getIsAtivo() ? "Ativo" : "Inativo";
+        userToChange.setIsAtivo(!userToChange.getIsAtivo());
+        userRepository.save(userToChange);
+        String newStatus = userToChange.getIsAtivo() ? "Ativo" : "Inativo";
 
-        user.setIsAtivo(false);
-
-        userRepository.save(user);
+        String logMessage = String.format(
+            "Usuário '%s' alterou o status do usuário '%s' de '%s' para '%s'",
+            authenticatedUser.getNome(),
+            userToChange.getNome(),
+            oldStatus,
+            newStatus
+        );
+        logService.registrarAcao(
+            "INFO",
+            authenticatedUser.getNome(),
+            authenticatedUser.getEmail(),
+            "CHANGE_USER_STATUS",
+            logMessage
+        );
     }
 
     public List<String> getAllGroups() {
@@ -137,6 +165,7 @@ public class UserService {
 
     @Transactional
     public UserResponse update(Long id, UserRequestDTO dto) {
+        User authenticatedUser = AuthenticationUtil.retriveAuthenticatedUser();
         User userToUpdate = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Usuário com ID " + id + " não encontrado para atualização."));
 
@@ -157,15 +186,35 @@ public class UserService {
         }
 
         User updatedUser = userRepository.save(userToUpdate);
+
+        String logMessage = String.format("Usuário '%s' atualizou os dados do usuário '%s'", authenticatedUser.getNome(), updatedUser.getNome());
+        logService.registrarAcao(
+            "INFO",
+            authenticatedUser.getNome(),
+            authenticatedUser.getEmail(),
+            "UPDATE_USER",
+            logMessage
+        );
+
         return UserResponse.fromEntity(updatedUser);
     }
 
     @Transactional
     public void delete(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new NotFoundException("Usuário com ID " + id + " não encontrado para exclusão.");
-        }
+        User authenticatedUser = AuthenticationUtil.retriveAuthenticatedUser();
+        User userToDelete = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Usuário com ID " + id + " não encontrado para exclusão."));
+
         userRepository.deleteById(id);
+
+        String logMessage = String.format("Usuário '%s' excluiu o usuário '%s' (ID: %d)", authenticatedUser.getNome(), userToDelete.getNome(), id);
+        logService.registrarAcao(
+            "INFO",
+            authenticatedUser.getNome(),
+            authenticatedUser.getEmail(),
+            "DELETE_USER",
+            logMessage
+        );
     }
 
     // SERVIÇO DE RECUPERAÇÃO DE SENHA
@@ -190,6 +239,15 @@ public class UserService {
         userToUpdate.setPassword(novaSenhaCodificada);
 
         userRepository.save(userToUpdate);
+
+        String logMessage = String.format("Usuário '%s' alterou a senha de %s", authenticatedUser.getNome(), userToUpdate.getNome());
+        logService.registrarAcao(
+            "INFO",
+            authenticatedUser.getNome(),
+            authenticatedUser.getEmail(),
+            "CHANGE_PASSWORD",
+            logMessage
+        );
     }
 
     @Transactional
@@ -249,6 +307,17 @@ emailService.sendHtmlEmail(user.getEmail(), subject, html);
         user.setRecoveryCode(null);
         user.setRecoveryCodeExpiration(null);
         userRepository.save(user);
+
+        
+        String logMessage = String.format("Usuário '%s' redefiniu sua senha", user.getNome());
+        logService.registrarAcao(
+            "INFO",
+            user.getNome(),
+            user.getEmail(),
+            "RESET_PASSWORD",
+            logMessage
+        );
+
     }
 
     private String generateRandomCode(int length) {
@@ -260,5 +329,18 @@ emailService.sendHtmlEmail(user.getEmail(), subject, html);
         return code.toString();
     }
 
+    public void logout(String email) {
+        User user = userRepository.findByEmail(email);
+        if (user != null) {
+            String logMessage = String.format("%s realizou logout", user.getNome());
+            logService.registrarAcao(
+                "INFO",
+                user.getNome(),
+                user.getEmail(),
+                "LOGOUT",
+                logMessage);
+            
+            
+        }
+    }
 }
-

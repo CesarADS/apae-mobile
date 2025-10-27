@@ -1,5 +1,41 @@
 import { jwtDecode } from 'jwt-decode';
 
+// ============================================
+// PERMISSÕES DO SISTEMA (Backend)
+// ============================================
+export const PERMISSIONS = {
+  // Alunos
+  ALUNO_READ: 'ALUNO_READ',
+  ALUNO_WRITE: 'ALUNO_WRITE',
+  ALUNO_DELETE: 'ALUNO_DELETE',
+  
+  // Colaboradores
+  COLABORADOR_READ: 'COLABORADOR_READ',
+  COLABORADOR_WRITE: 'COLABORADOR_WRITE',
+  COLABORADOR_DELETE: 'COLABORADOR_DELETE',
+  
+  // Documentos de Alunos
+  DOCUMENTO_ALUNO_READ: 'DOCUMENTO_ALUNO_READ',
+  DOCUMENTO_ALUNO_WRITE: 'DOCUMENTO_ALUNO_WRITE',
+  DOCUMENTO_ALUNO_DELETE: 'DOCUMENTO_ALUNO_DELETE',
+  
+  // Documentos de Colaboradores
+  DOCUMENTO_COLABORADOR_READ: 'DOCUMENTO_COLABORADOR_READ',
+  DOCUMENTO_COLABORADOR_WRITE: 'DOCUMENTO_COLABORADOR_WRITE',
+  DOCUMENTO_COLABORADOR_DELETE: 'DOCUMENTO_COLABORADOR_DELETE',
+  
+  // Documentos Institucionais
+  DOCUMENTO_INSTITUCIONAL_READ: 'DOCUMENTO_INSTITUCIONAL_READ',
+  DOCUMENTO_INSTITUCIONAL_WRITE: 'DOCUMENTO_INSTITUCIONAL_WRITE',
+  DOCUMENTO_INSTITUCIONAL_DELETE: 'DOCUMENTO_INSTITUCIONAL_DELETE',
+  
+  // Administração
+  TIPO_DOCUMENTO: 'TIPO_DOCUMENTO',
+  GRUPOS_PERMISSOES: 'GRUPOS_PERMISSOES',
+  GERENCIAR_USUARIO: 'GERENCIAR_USUARIO',
+  SUPER_ADMIN: 'SUPER_ADMIN',
+} as const;
+
 export interface DecodedToken {
   sub: string; // username/email
   nome?: string;
@@ -54,29 +90,33 @@ export const hasAllPermissions = (userPermissions: string[], requiredPermissions
 
 /**
  * Verifica se o usuário pode acessar o app mobile
- * Regra: Precisa ter ao menos (READ + WRITE + TIPO_DOCUMENTO) para pelo menos UMA entidade
- * OU ser SUPER_ADMIN (tem acesso a tudo)
+ * 
+ * REGRA: Para ter acesso ao app, o usuário precisa ter:
+ * - TIPO_DOCUMENTO (obrigatório)
+ * - READ + WRITE de pelo menos UMA entidade (Aluno, Colaborador ou Institucional)
+ * - OU ser SUPER_ADMIN (acessa tudo)
  */
 export const canAccessMobileApp = (permissions: string[]): UserPermissions => {
   // SUPER_ADMIN tem acesso a tudo
-  const isSuperAdmin = permissions.includes('SUPER_ADMIN');
+  const isSuperAdmin = hasPermission(permissions, PERMISSIONS.SUPER_ADMIN);
   
+  // Verificar acesso a cada entidade
   const canAccessAluno = isSuperAdmin || hasAllPermissions(permissions, [
-    'DOCUMENTO_ALUNO_READ',
-    'DOCUMENTO_ALUNO_WRITE',
-    'TIPO_DOCUMENTO'
+    PERMISSIONS.DOCUMENTO_ALUNO_READ,
+    PERMISSIONS.DOCUMENTO_ALUNO_WRITE,
+    PERMISSIONS.TIPO_DOCUMENTO
   ]);
 
   const canAccessColaborador = isSuperAdmin || hasAllPermissions(permissions, [
-    'DOCUMENTO_COLABORADOR_READ',
-    'DOCUMENTO_COLABORADOR_WRITE',
-    'TIPO_DOCUMENTO'
+    PERMISSIONS.DOCUMENTO_COLABORADOR_READ,
+    PERMISSIONS.DOCUMENTO_COLABORADOR_WRITE,
+    PERMISSIONS.TIPO_DOCUMENTO
   ]);
 
   const canAccessInstituicao = isSuperAdmin || hasAllPermissions(permissions, [
-    'DOCUMENTO_INSTITUCIONAL_READ',
-    'DOCUMENTO_INSTITUCIONAL_WRITE',
-    'TIPO_DOCUMENTO'
+    PERMISSIONS.DOCUMENTO_INSTITUCIONAL_READ,
+    PERMISSIONS.DOCUMENTO_INSTITUCIONAL_WRITE,
+    PERMISSIONS.TIPO_DOCUMENTO
   ]);
 
   return {
@@ -88,7 +128,9 @@ export const canAccessMobileApp = (permissions: string[]): UserPermissions => {
 };
 
 /**
- * Valida se o usuário tem permissão mínima para usar o app
+ * Valida se o usuário tem permissão mínima para usar o app mobile
+ * 
+ * REGRA: Precisa ter acesso a pelo menos UMA entidade
  */
 export const hasMinimumPermissions = (permissions: string[]): boolean => {
   const access = canAccessMobileApp(permissions);

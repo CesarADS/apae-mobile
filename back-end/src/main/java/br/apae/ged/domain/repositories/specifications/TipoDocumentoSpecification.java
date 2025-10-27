@@ -30,4 +30,20 @@ public class TipoDocumentoSpecification {
     public static Specification<TipoDocumento> isInstitucional() {
         return (root, query, criteriaBuilder) -> criteriaBuilder.isTrue(root.get("institucional"));
     }
+
+    public static Specification<TipoDocumento> isColaborador() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.isTrue(root.get("colaborador"));
+    }
+
+    public static Specification<TipoDocumento> isNotColaborador() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("colaborador"));
+    }
+
+    public static Specification<TipoDocumento> isGeravel() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.isTrue(root.get("podeGerarDocumento"));
+    }
+
+    public static Specification<TipoDocumento> isNotGeravel() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("podeGerarDocumento"));
+    }
 }

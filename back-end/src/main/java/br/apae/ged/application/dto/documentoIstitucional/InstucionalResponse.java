@@ -13,18 +13,20 @@ public record InstucionalResponse(
         LocalDate dataCriacao,
         LocalDateTime dataUpload,
         LocalDateTime dataDownload,
-        String tipoDocumento
+        String tipoDocumento,
+        LocalDate validade
 ) {
     public InstucionalResponse(Institucional doc) {
         this(
                 doc.getId(),
                 doc.getTitulo(),
                 doc.getTipoConteudo(),
-                doc.getConteudo(),
+                doc.getInstitucionalContent() != null ? doc.getInstitucionalContent().getConteudo() : null,
                 doc.getDataDocumento(),
                 doc.getDataUpload(),
                 doc.getDataDownload(),
-                doc.getTipoDocumento() != null ? doc.getTipoDocumento().getNome() : null
+                doc.getTipoDocumento() != null ? doc.getTipoDocumento().getNome() : null,
+                doc.getValidade()
         );
     }
 
