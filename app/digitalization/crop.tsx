@@ -1,10 +1,10 @@
 import { Button, Container, Typography } from '@/components';
 import { EntityType } from '@/types';
 import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Dimensions, Image, Platform, StyleSheet, View } from 'react-native';
-import ImagePicker from 'react-native-image-crop-picker';
+import { Alert, Dimensions, Image, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -25,38 +25,23 @@ export default function CropScreen() {
     try {
       setProcessing(true);
 
-      // Abrir editor nativo de crop
-      const croppedImage = await ImagePicker.openCropper({
-        path: editedImageUri.replace('file://', ''), // Remove file:// prefix
-        freeStyleCropEnabled: true,
-        cropperToolbarTitle: 'Recortar Documento',
-        cropperToolbarColor: '#1976d2',
-        cropperToolbarWidgetColor: '#fff',
-        cropperActiveWidgetColor: '#1976d2',
-        hideBottomControls: false,
-        enableRotationGesture: true,
-        compressImageQuality: 1,
-        mediaType: 'photo',
-        includeBase64: false,
+      // Abrir editor nativo de crop usando expo-image-picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 1,
+        base64: false,
       });
 
-      // Converter path para URI com file://
-      const newUri = Platform.OS === 'android' 
-        ? `file://${croppedImage.path}`
-        : croppedImage.path;
-
-      setEditedImageUri(newUri);
-      setProcessing(false);
-      Alert.alert('✅ Sucesso', 'Imagem recortada com sucesso!');
-    } catch (error: any) {
-      setProcessing(false);
-      
-      // Usuário cancelou
-      if (error.code === 'E_PICKER_CANCELLED') {
-        console.log('Crop cancelado pelo usuário');
-        return;
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const newUri = result.assets[0].uri;
+        setEditedImageUri(newUri);
+        Alert.alert('✅ Sucesso', 'Imagem recortada com sucesso!');
       }
 
+      setProcessing(false);
+    } catch (error: any) {
+      setProcessing(false);
       console.error('Erro ao recortar:', error);
       Alert.alert('Erro', 'Não foi possível abrir o editor de recorte');
     }
