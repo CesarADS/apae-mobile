@@ -1,12 +1,11 @@
 import { Button, Container, Typography } from '@/components';
 import { EntityType } from '@/types';
+import { MaterialIcons } from '@expo/vector-icons';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Dimensions, Image, StyleSheet, View } from 'react-native';
+import { Alert, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 export default function CropScreen() {
   const router = useRouter();
@@ -17,21 +16,29 @@ export default function CropScreen() {
     existingPages?: string;
   }>();
 
+  console.log('CropScreen montado com params:', { entityType, formData, imageUri, existingPages });
+
   const [processing, setProcessing] = useState(false);
-  const [editedImageUri, setEditedImageUri] = useState<string>(imageUri);
+  const [currentImageUri, setCurrentImageUri] = useState<string>(imageUri);
 
-  const handleCrop = async () => {
-    if (!editedImageUri) {
-      Alert.alert('Erro', 'Imagem não encontrada');
-      return;
-    }
+  // Validação inicial
+  if (!imageUri) {
+    console.error('CropScreen: imageUri está vazio!');
+    Alert.alert('Erro', 'Imagem não encontrada', [
+      { text: 'Voltar', onPress: () => router.back() }
+    ]);
+    return null;
+  }
 
+  const handleConfirm = async () => {
     setProcessing(true);
 
     try {
-      // Processar a imagem: auto-crop e ajuste de qualidade
+      console.log('Processando imagem...');
+      
+      // Processar a imagem atual (pode ter sido rotacionada)
       const manipResult = await ImageManipulator.manipulateAsync(
-        editedImageUri,
+        currentImageUri,
         [
           // Redimensionar se muito grande (max 2000px de largura)
           { resize: { width: 2000 } },
@@ -43,6 +50,8 @@ export default function CropScreen() {
         }
       );
 
+      console.log('Imagem processada com sucesso');
+
       // Juntar com páginas existentes se houver
       const currentPages = existingPages ? JSON.parse(existingPages) : [];
       const newPages = [
@@ -52,6 +61,8 @@ export default function CropScreen() {
           base64: manipResult.base64,
         },
       ];
+
+      console.log('Navegando para pages com', newPages.length, 'páginas');
 
       // Navegar para a tela de gerenciamento de páginas
       router.push({
@@ -65,7 +76,6 @@ export default function CropScreen() {
     } catch (error) {
       console.error('Erro ao processar imagem:', error);
       Alert.alert('Erro', 'Não foi possível processar a imagem');
-    } finally {
       setProcessing(false);
     }
   };
@@ -75,46 +85,53 @@ export default function CropScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-      <Container>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <Container variant="screen">
         <View style={styles.header}>
-          <Typography variant="h2">Ajustar Imagem</Typography>
+          <Typography variant="h2">Revisar Documento</Typography>
           <Typography variant="body" style={styles.subtitle}>
-            A imagem será automaticamente ajustada para melhor qualidade
+            Confira se o documento está legível e bem posicionado
           </Typography>
         </View>
 
-      <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: editedImageUri }}
-          style={styles.image}
-          resizeMode="contain"
-        />
-      </View>
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: currentImageUri }}
+            style={styles.image}
+            resizeMode="contain"
+          />
+        </View>
 
-      <View style={styles.footer}>
-        <Button
-          title="Tirar Outra"
-          onPress={handleRetake}
-          variant="outline"
-          style={styles.button}
-          disabled={processing}
-        />
-        <Button
-          title={processing ? 'Processando...' : 'Confirmar'}
-          onPress={handleCrop}
-          style={styles.button}
-          disabled={processing}
-        />
-      </View>
-    </Container>
+        <View style={styles.actions}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={handleRetake}
+            disabled={processing}
+          >
+            <MaterialIcons name="camera-alt" size={32} color="#007BFF" />
+            <Typography style={styles.actionText}>Tirar Nova Foto</Typography>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.footer}>
+          <Button
+            title={processing ? 'Processando...' : 'Continuar'}
+            onPress={handleConfirm}
+            disabled={processing}
+          />
+        </View>
+      </Container>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFF',
+  },
   header: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   subtitle: {
     opacity: 0.7,
@@ -125,18 +142,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   image: {
     flex: 1,
     width: '100%',
     height: '100%',
   },
-  footer: {
+  actions: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'space-around',
+    marginBottom: 16,
+    paddingHorizontal: 20,
   },
-  button: {
-    flex: 1,
+  actionButton: {
+    alignItems: 'center',
+    padding: 12,
+  },
+  actionText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#666',
+  },
+  footer: {
+    gap: 12,
   },
 });

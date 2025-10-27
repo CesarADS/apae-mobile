@@ -1,5 +1,5 @@
 import { CapturedPage, EntityType } from '@/types';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Print from 'expo-print';
 import { useState } from 'react';
 import { useApiClient } from './useApiClient';
@@ -22,12 +22,22 @@ export const useDocumentUpload = () => {
   const [progress, setProgress] = useState(0);
 
   const generatePDFFromImages = async (pages: CapturedPage[]): Promise<string> => {
-    // Criar HTML com as imagens
-    const imagesHtml = pages
+    // Converter cada imagem para base64
+    const imagesBase64 = await Promise.all(
+      pages.map(async (page) => {
+        const base64 = await FileSystem.readAsStringAsync(page.uri, {
+          encoding: 'base64',
+        });
+        return `data:image/jpeg;base64,${base64}`;
+      })
+    );
+
+    // Criar HTML com as imagens em base64
+    const imagesHtml = imagesBase64
       .map(
-        (page) => `
+        (base64Image) => `
         <div style="page-break-after: always;">
-          <img src="${page.uri}" style="width: 100%; height: auto;" />
+          <img src="${base64Image}" style="width: 100%; height: auto;" />
         </div>
       `
       )
@@ -70,50 +80,66 @@ export const useDocumentUpload = () => {
     setProgress(0);
 
     try {
-      // Passo 1: Gerar PDF (30% do progresso)
+      // Passo 1: Converter imagens para base64 e gerar PDF (50% do progresso)
       setProgress(10);
       const pdfUri = await generatePDFFromImages(pages);
-      setProgress(30);
-
-      // Passo 2: Converter para base64 (50% do progresso)
-      const pdfBase64 = await convertFileToBase64(pdfUri);
       setProgress(50);
 
-      // Passo 3: Preparar payload conforme o tipo de entidade
+      // Passo 2: Verificar se PDF foi gerado
+      const pdfInfo = await FileSystem.getInfoAsync(pdfUri);
+      if (!pdfInfo.exists) {
+        throw new Error('PDF não foi gerado corretamente');
+      }
+      
+      setProgress(60);
+
+      // Passo 3: Preparar FormData conforme o tipo de entidade
       let endpoint: string;
-      let payload: any;
+      const uploadFormData = new FormData();
 
       if (entityType === 'instituicao') {
-        // Documento institucional
+        // Documento institucional: POST /institucional/upload
         endpoint = '/institucional/upload';
-        payload = {
-          titulo: formData.titulo,
-          tipoDocumento: formData.tipoDocumento,
-          dataDocumento: formData.dataDocumento,
-          fileBase64: pdfBase64,
-          fileName: `documento_${Date.now()}.pdf`,
-        };
+        uploadFormData.append('titulo', formData.titulo);
+        uploadFormData.append('tipoDocumento', formData.tipoDocumento);
+        uploadFormData.append('dataDocumento', formData.dataDocumento.split('T')[0]); // Formato YYYY-MM-DD
+        
+        // Adicionar arquivo PDF - Formato React Native
+        uploadFormData.append('file', {
+          uri: pdfUri,
+          type: 'application/pdf',
+          name: `documento_${Date.now()}.pdf`,
+        } as any);
       } else {
-        // Documento de pessoa (aluno ou colaborador)
+        // Documento de pessoa (aluno ou colaborador): POST /documentos/create/{pessoaId}
         const pessoaId = entityType === 'aluno' ? formData.alunoId : formData.colaboradorId;
         endpoint = `/documentos/create/${pessoaId}`;
-        payload = {
-          tipoDocumento: formData.tipoDocumento,
-          dataDocumento: formData.dataDocumento,
-          fileBase64: pdfBase64,
-          fileName: `documento_${Date.now()}.pdf`,
-        };
+        
+        uploadFormData.append('tipoDocumento', formData.tipoDocumento);
+        uploadFormData.append('dataDocumento', formData.dataDocumento.split('T')[0]); // Formato YYYY-MM-DD
+        
+        // Adicionar arquivo PDF - Formato React Native
+        uploadFormData.append('file', {
+          uri: pdfUri,
+          type: 'application/pdf',
+          name: `documento_${Date.now()}.pdf`,
+        } as any);
       }
 
-      setProgress(70);
+      setProgress(65);
 
-      // Passo 4: Fazer upload (90% do progresso)
+      // Passo 4: Fazer upload
+      console.log('[Upload] Endpoint:', endpoint);
+      console.log('[Upload] PDF Uri:', pdfUri);
+      console.log('[Upload] tipoDocumento:', formData.tipoDocumento);
+      console.log('[Upload] dataDocumento:', formData.dataDocumento.split('T')[0]);
+      
       const response = await request<{ id: number; message?: string }>(endpoint, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'multipart/form-data',
         },
-        body: JSON.stringify(payload),
+        body: uploadFormData as any,
       });
 
       setProgress(100);

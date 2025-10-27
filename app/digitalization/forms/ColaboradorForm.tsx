@@ -1,4 +1,5 @@
 import { Button, Input, Typography } from '@/components';
+import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
@@ -14,7 +15,10 @@ interface Colaborador {
 interface TipoDocumento {
   id: number;
   nome: string;
-  categoria: string;
+  institucional: boolean;
+  colaborador: boolean;
+  guardaPermanente: boolean;
+  isAtivo: boolean;
 }
 
 interface ColaboradorFormData {
@@ -29,7 +33,18 @@ interface ColaboradorFormProps {
 }
 
 const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange }) => {
-  const { get } = useApiClient();
+  const { data } = useAuth(); // Obter token do contexto
+  
+  // Criar apiClient com token inicial
+  const api = useApiClient({ initialToken: data?.token || null });
+  
+  // Atualizar token quando mudar
+  useEffect(() => {
+    if (data?.token) {
+      console.log('[ColaboradorForm] Definindo token no apiClient');
+      api.setToken(data.token);
+    }
+  }, [data?.token]);
   
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
   const [tiposDocumento, setTiposDocumento] = useState<TipoDocumento[]>([]);
@@ -46,26 +61,32 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange }) => {
     dataDocumento: new Date(),
   });
 
-  // Buscar tipos de documento da categoria COLABORADOR
+  // Buscar tipos de documento de COLABORADOR
   useEffect(() => {
     const fetchTiposDocumento = async () => {
       try {
-        const response = await get<TipoDocumento[]>('/tipo-documento/ativos');
-        // Filtrar apenas os tipos de documento da categoria COLABORADOR
-        const tiposColaborador = (response || []).filter(tipo => tipo.categoria === 'COLABORADOR');
+        console.log('[ColaboradorForm] Buscando tipos de documento, token presente:', !!data?.token);
+        const response = await api.get<TipoDocumento[]>('/tipo-documento/ativos');
+        // Filtrar apenas os tipos de documento de COLABORADOR (colaborador=true)
+        const tiposColaborador = (response || []).filter((tipo: TipoDocumento) => tipo.colaborador === true);
+        console.log('[ColaboradorForm] Tipos de documento COLABORADOR encontrados:', tiposColaborador.length);
         setTiposDocumento(tiposColaborador);
       } catch (error: any) {
         const errorMessage = error?.message || 'Erro desconhecido';
+        console.error('[ColaboradorForm] Erro ao carregar tipos de documento:', errorMessage);
         // Não mostrar alerta para erro de token
         if (!errorMessage.includes('Usuário ou senha inválidos')) {
           Alert.alert('Erro', 'Não foi possível carregar os tipos de documento');
         }
-        console.error('Erro ao carregar tipos de documento:', error);
       }
     };
 
-    fetchTiposDocumento();
-  }, []);
+    if (data?.token) {
+      fetchTiposDocumento();
+    } else {
+      console.log('[ColaboradorForm] Token não disponível ainda');
+    }
+  }, [data?.token]);
 
   // Buscar colaboradores quando o termo de busca mudar
   useEffect(() => {
@@ -76,19 +97,34 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange }) => {
       return;
     }
 
+    if (!data?.token) {
+      console.log('[ColaboradorForm] Não pode buscar colaboradores - token não disponível');
+      return;
+    }
+
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await get<{ content: Colaborador[] }>(`/colaborador?search=${searchTerm}&page=0&size=10`);
-        setColaboradores(response.content || []);
+        console.log('[ColaboradorForm] Buscando colaboradores com termo:', searchTerm);
+        // Busca todos e filtra localmente (backend não tem busca por termo)
+        const response = await api.get<{ content: Colaborador[] }>(`/colaboradores?page=0&size=100`);
+        console.log('[ColaboradorForm] Colaboradores totais recebidos:', response.content?.length || 0);
+        
+        // Filtrar localmente por nome ou CPF
+        const filtrados = (response.content || []).filter(col => 
+          col.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          col.cpf.includes(searchTerm)
+        );
+        console.log('[ColaboradorForm] Colaboradores filtrados:', filtrados.length);
+        setColaboradores(filtrados.slice(0, 10)); // Limitar a 10 resultados
         setShowSuggestions(true);
       } catch (error: any) {
         const errorMessage = error?.message || 'Erro desconhecido';
+        console.error('[ColaboradorForm] Erro ao buscar colaboradores:', errorMessage);
         // Não mostrar alerta para erro de token
         if (!errorMessage.includes('Usuário ou senha inválidos')) {
           Alert.alert('Erro', 'Não foi possível buscar colaboradores');
         }
-        console.error('Erro ao buscar colaboradores:', error);
         setColaboradores([]);
       } finally {
         setLoading(false);
@@ -96,7 +132,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange }) => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, data?.token]);
 
   // Validar e notificar mudanças
   useEffect(() => {

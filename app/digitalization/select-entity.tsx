@@ -4,7 +4,7 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Container, Typography } from '../../components';
-import { useAuth } from '../../hooks';
+import { useAuth } from '../../contexts/AuthContext';
 import { EntityType } from '../../types';
 
 export default function SelectEntityScreen() {
@@ -12,6 +12,13 @@ export default function SelectEntityScreen() {
   
   // Obter permissões do usuário
   const userPermissions = data?.userPermissions;
+  
+  // DEBUG: Log para verificar as permissões
+  console.log('[SelectEntity] data completo:', data);
+  console.log('[SelectEntity] userPermissions:', userPermissions);
+  console.log('[SelectEntity] canAccessAluno:', userPermissions?.canAccessAluno);
+  console.log('[SelectEntity] canAccessColaborador:', userPermissions?.canAccessColaborador);
+  console.log('[SelectEntity] canAccessInstituicao:', userPermissions?.canAccessInstituicao);
   
   const handleSelectEntity = (entityType: EntityType) => {
     console.log('Selecionando entidade:', entityType);

@@ -4,7 +4,8 @@ import { Alert, FlatList, StyleSheet, TouchableOpacity, View } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Container, Typography } from '../components';
-import { useAuth, useDocuments } from '../hooks';
+import { useAuth } from '../contexts/AuthContext';
+import { useDocuments } from '../hooks';
 import { Document } from '../types';
 
 export default function DashboardScreen() {
@@ -127,7 +128,7 @@ export default function DashboardScreen() {
                 📱
               </Typography>
               <Typography variant="h3" style={[{ color: 'white' }]} align="center">
-                Digitalizar Documento
+                Digitalizar documento
               </Typography>
               <Typography variant="body" style={[{ color: 'white' }]} align="center">
                 Toque aqui para escanear um novo documento
@@ -139,7 +140,7 @@ export default function DashboardScreen() {
         {/* Lista de documentos recentes - Metade inferior */}
         <View style={styles.documentsSection}>
           <Typography variant="h3" color="primary" style={styles.sectionTitle}>
-            Todos os Documentos
+            Digitalizados recentemente
           </Typography>
           
           {error && (

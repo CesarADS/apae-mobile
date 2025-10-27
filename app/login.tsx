@@ -12,7 +12,8 @@ import {
     QRCodeScanner,
     Typography
 } from '../components';
-import { useAuth, usePasswordRecovery, useQRCode } from '../hooks';
+import { useAuth } from '../contexts/AuthContext';
+import { usePasswordRecovery, useQRCode } from '../hooks';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();

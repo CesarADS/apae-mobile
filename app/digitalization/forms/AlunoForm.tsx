@@ -1,4 +1,5 @@
 import { Button, Input, Typography } from '@/components';
+import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
@@ -15,7 +16,10 @@ interface Aluno {
 interface TipoDocumento {
   id: number;
   nome: string;
-  categoria: string;
+  institucional: boolean;
+  colaborador: boolean;
+  guardaPermanente: boolean;
+  isAtivo: boolean;
 }
 
 interface AlunoFormData {
@@ -30,7 +34,24 @@ interface AlunoFormProps {
 }
 
 const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
-  const { get } = useApiClient();
+  const { data } = useAuth(); // Obter token do contexto
+  
+  // Log de debug
+  console.log('[AlunoForm] Montado - Token disponível:', !!data?.token);
+  console.log('[AlunoForm] Data completo:', data ? 'presente' : 'ausente');
+  
+  // Criar apiClient com token inicial
+  const api = useApiClient({ initialToken: data?.token || null });
+  
+  // Atualizar token quando mudar
+  useEffect(() => {
+    if (data?.token) {
+      console.log('[AlunoForm] Definindo token no apiClient');
+      api.setToken(data.token);
+    } else {
+      console.log('[AlunoForm] AVISO: Token não disponível no useEffect');
+    }
+  }, [data?.token]);
   
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [tiposDocumento, setTiposDocumento] = useState<TipoDocumento[]>([]);
@@ -51,22 +72,36 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
   useEffect(() => {
     const fetchTiposDocumento = async () => {
       try {
-        const response = await get<TipoDocumento[]>('/tipo-documento/ativos');
-        // Filtrar apenas os tipos de documento da categoria ALUNO
-        const tiposAluno = (response || []).filter(tipo => tipo.categoria === 'ALUNO');
+        console.log('[AlunoForm] Buscando tipos de documento, token presente:', !!data?.token);
+        const response = await api.get<TipoDocumento[]>('/tipo-documento/ativos');
+        console.log('[AlunoForm] Resposta completa da API:', response);
+        console.log('[AlunoForm] Total de tipos de documento recebidos:', response?.length || 0);
+        
+        // Filtrar apenas os tipos de documento de ALUNO (institucional=false e colaborador=false)
+        const tiposAluno = (response || []).filter(tipo => {
+          console.log('[AlunoForm] Tipo:', tipo.nome, 'institucional:', tipo.institucional, 'colaborador:', tipo.colaborador);
+          return !tipo.institucional && !tipo.colaborador;
+        });
+        console.log('[AlunoForm] Tipos de documento ALUNO encontrados:', tiposAluno.length);
+        console.log('[AlunoForm] Tipos ALUNO:', tiposAluno);
         setTiposDocumento(tiposAluno);
       } catch (error: any) {
         const errorMessage = error?.message || 'Erro desconhecido';
+        console.error('[AlunoForm] Erro ao carregar tipos de documento:', errorMessage);
+        console.error('[AlunoForm] Erro completo:', error);
         // Não mostrar alerta para erro de token (será tratado no contexto)
         if (!errorMessage.includes('Usuário ou senha inválidos')) {
           Alert.alert('Erro', 'Não foi possível carregar os tipos de documento');
         }
-        console.error('Erro ao carregar tipos de documento:', error);
       }
     };
 
-    fetchTiposDocumento();
-  }, []);
+    if (data?.token) {
+      fetchTiposDocumento();
+    } else {
+      console.log('[AlunoForm] Token não disponível ainda');
+    }
+  }, [data?.token]);
 
   // Buscar alunos quando o termo de busca mudar
   useEffect(() => {
@@ -77,19 +112,27 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
       return;
     }
 
+    if (!data?.token) {
+      console.log('[AlunoForm] Não pode buscar alunos - token não disponível');
+      return;
+    }
+
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await get<{ content: Aluno[] }>(`/aluno?search=${searchTerm}&page=0&size=10`);
+        console.log('[AlunoForm] Buscando alunos com termo:', searchTerm);
+        // Corrigido: usar /alunos/all e termoBusca como parâmetro
+        const response = await api.get<{ content: Aluno[] }>(`/alunos/all?termoBusca=${searchTerm}&page=0&size=10`);
+        console.log('[AlunoForm] Alunos encontrados:', response.content?.length || 0);
         setAlunos(response.content || []);
         setShowSuggestions(true);
       } catch (error: any) {
         const errorMessage = error?.message || 'Erro desconhecido';
+        console.error('[AlunoForm] Erro ao buscar alunos:', errorMessage);
         // Não mostrar alerta para erro de token
         if (!errorMessage.includes('Usuário ou senha inválidos')) {
           Alert.alert('Erro', 'Não foi possível buscar alunos');
         }
-        console.error('Erro ao buscar alunos:', error);
         setAlunos([]);
       } finally {
         setLoading(false);
@@ -97,7 +140,7 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, data?.token]);
 
   // Validar e notificar mudanças
   useEffect(() => {

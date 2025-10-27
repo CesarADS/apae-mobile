@@ -51,20 +51,68 @@ export const useApiClient = (options: UseApiClientOptions = {}) => {
 
   const request = useCallback(async <T,>(endpoint: string, options: RequestOptions = {}): Promise<T> => {
     const url = `${baseURL}${endpoint}`;
+    
+    // Detectar se é FormData para não adicionar Content-Type
+    const isFormData = options.body instanceof FormData;
+    
+    const headers: Record<string, string> = { ...(options.headers as Record<string, string> || {}) };
+    
+    // Adicionar token se disponível
+    const token = getGlobalToken();
+    console.log('[API Client] Token disponível:', token ? 'SIM' : 'NÃO');
+    console.log('[API Client] Endpoint:', endpoint);
+    console.log('[API Client] É FormData:', isFormData);
+    
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // Para FormData, NÃO adicionar Content-Type manualmente!
+    // O fetch precisa adicionar automaticamente com o boundary correto
+    // Ex: "multipart/form-data; boundary=----WebKitFormBoundary..."
+    if (isFormData) {
+      // DELETAR Content-Type para o fetch gerar com boundary automático
+      delete headers['Content-Type'];
+    } else if (!headers['Content-Type']) {
+      // Para JSON, adicionar Content-Type application/json
+      headers['Content-Type'] = 'application/json';
+    }
+    
+    console.log('[API Client] Headers finais:', headers);
+    
     const config: RequestInit = {
       ...options,
-      headers: {
-        ...getHeaders(),
-        ...options.headers,
-      },
+      headers,
     };
+    
+    if (isFormData) {
+      console.log('[API Client] Body é FormData, tentando enviar...');
+    }
+    
     try {
+      console.log('[API Client] Fazendo fetch para:', url);
       const response = await fetch(url, config);
+      console.log('[API Client] Response status:', response.status);
+      console.log('[API Client] Response ok:', response.ok);
+      
       if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          throw new Error('Usuário ou senha inválidos');
+        if (response.status === 401) {
+          // Token expirado ou inválido
+          console.log('[API Client] ❌ Token inválido ou expirado (401)');
+          setGlobalToken(null);
+          throw new Error('Sua sessão expirou. Por favor, faça login novamente.');
         }
+        
+        if (response.status === 403) {
+          // Autenticado mas sem permissão
+          console.log('[API Client] ❌ Acesso negado (403) - Sem permissão');
+          const errorText = await response.text().catch(() => '');
+          console.log('[API Client] ❌ Detalhe do erro 403:', errorText);
+          throw new Error(errorText || 'Você não tem permissão para realizar esta ação. Contate o administrador.');
+        }
+        
         const errorText = await response.text().catch(() => '');
+        console.log('[API Client] ❌ Erro HTTP:', response.status, errorText);
         throw new Error(errorText || `Erro HTTP: ${response.status}`);
       }
       const text = await response.text();

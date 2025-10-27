@@ -83,15 +83,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // Verificar permissões de acesso
       const userPermissions = canAccessMobileApp(decodedToken.permissions);
-      console.log('Permissões do usuário:', {
-        aluno: userPermissions.canAccessAluno,
-        colaborador: userPermissions.canAccessColaborador,
-        instituicao: userPermissions.canAccessInstituicao,
-        permissions: userPermissions.permissions,
-      });
+      console.log('=== PERMISSÕES DO USUÁRIO ===');
+      console.log('Todas as permissões:', decodedToken.permissions);
+      console.log('Tem TIPO_DOCUMENTO?', decodedToken.permissions.includes('TIPO_DOCUMENTO'));
+      console.log('Acesso Aluno:', userPermissions.canAccessAluno);
+      console.log('Acesso Colaborador:', userPermissions.canAccessColaborador);
+      console.log('Acesso Instituição:', userPermissions.canAccessInstituicao);
+      console.log('============================');
       
       // Definir o token para requisições futuras
+      console.log('[AUTH] Salvando token no api client...');
       api.setToken(result.token);
+      console.log('[AUTH] Token salvo! Primeiros caracteres:', result.token.substring(0, 20) + '...');
       
       setState(prev => ({
         ...prev,
@@ -106,6 +109,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           token: result.token,
           expiresAt: new Date(decodedToken.exp * 1000).toISOString(),
           permissions: decodedToken.permissions,
+          userPermissions: userPermissions, // ← ADICIONAR userPermissions!
         },
         loading: false,
       }));

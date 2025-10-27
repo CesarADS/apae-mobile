@@ -1,4 +1,5 @@
 import { Button, Input, Typography } from '@/components';
+import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
@@ -8,7 +9,10 @@ import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 interface TipoDocumento {
   id: number;
   nome: string;
-  categoria: string;
+  institucional: boolean;
+  colaborador: boolean;
+  guardaPermanente: boolean;
+  isAtivo: boolean;
 }
 
 interface InstituicaoFormData {
@@ -22,13 +26,24 @@ interface InstituicaoFormProps {
 }
 
 const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange }) => {
-  const { get } = useApiClient();
+  const { data } = useAuth(); // Obter token do contexto
   
-    console.log('InstituicaoForm renderizando...');
+  // Criar apiClient com token inicial
+  const api = useApiClient({ initialToken: data?.token || null });
+  
+  // Atualizar token quando mudar
+  useEffect(() => {
+    if (data?.token) {
+      console.log('[InstituicaoForm] Definindo token no apiClient');
+      api.setToken(data.token);
+    }
+  }, [data?.token]);
+  
+  console.log('InstituicaoForm renderizando...');
   
   const [tiposDocumento, setTiposDocumento] = useState<TipoDocumento[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
-    const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   
   const [formData, setFormData] = useState<InstituicaoFormData>({
     titulo: '',
@@ -36,19 +51,20 @@ const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange }) => {
     dataDocumento: new Date(),
   });
 
-  // Buscar tipos de documento da categoria INSTITUCIONAL
+  // Buscar tipos de documento de INSTITUIÇÃO
   useEffect(() => {
     const fetchTiposDocumento = async () => {
       try {
-        console.log('Buscando tipos de documento...');
-        const response = await get<TipoDocumento[]>('/tipo-documento/ativos');
-        console.log('Tipos de documento recebidos:', response);
-        // Filtrar apenas os tipos de documento da categoria INSTITUCIONAL
-        const tiposInstitucional = (response || []).filter(tipo => tipo.categoria === 'INSTITUCIONAL');
+        console.log('[InstituicaoForm] Buscando tipos de documento, token presente:', !!data?.token);
+        const response = await api.get<TipoDocumento[]>('/tipo-documento/ativos');
+        console.log('[InstituicaoForm] Tipos de documento recebidos:', response);
+        // Filtrar apenas os tipos de documento de INSTITUIÇÃO (institucional=true)
+        const tiposInstitucional = (response || []).filter((tipo: TipoDocumento) => tipo.institucional === true);
+        console.log('[InstituicaoForm] Tipos de documento INSTITUCIONAL encontrados:', tiposInstitucional.length);
         setTiposDocumento(tiposInstitucional);
       } catch (error: any) {
         const errorMessage = error?.message || 'Erro desconhecido';
-        console.error('Erro ao buscar tipos:', error);
+        console.error('[InstituicaoForm] Erro ao buscar tipos:', errorMessage);
         // Não mostrar alerta para erro de token
         if (!errorMessage.includes('Usuário ou senha inválidos')) {
           Alert.alert('Erro', 'Não foi possível carregar os tipos de documento');
@@ -58,8 +74,13 @@ const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange }) => {
       }
     };
 
-    fetchTiposDocumento();
-  }, []);
+    if (data?.token) {
+      fetchTiposDocumento();
+    } else {
+      console.log('[InstituicaoForm] Token não disponível ainda');
+      setLoading(false);
+    }
+  }, [data?.token]);
 
   // Validar e notificar mudanças
   useEffect(() => {

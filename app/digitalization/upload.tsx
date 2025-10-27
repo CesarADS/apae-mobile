@@ -59,6 +59,13 @@ export default function UploadScreen() {
     router.replace('/dashboard' as any);
   };
 
+  const handleGoToLogin = () => {
+    // Redirecionar para tela de login
+    router.replace('/login' as any);
+  };
+
+  const isSessionExpired = errorMessage.includes('sessão expirou') || errorMessage.includes('login novamente');
+
   const handleScanAnother = () => {
     // Voltar para a seleção de entidade
     router.replace('./select-entity' as any);
@@ -152,20 +159,32 @@ export default function UploadScreen() {
         </Typography>
 
         <View style={styles.actionsContainer}>
-          <Button
-            title="Tentar Novamente"
-            onPress={() => {
-              setUploadComplete(false);
-              handleUpload();
-            }}
-            variant="outline"
-            style={styles.button}
-          />
-          <Button
-            title="Voltar ao Início"
-            onPress={handleFinish}
-            style={styles.button}
-          />
+          {isSessionExpired ? (
+            // Se sessão expirou, mostrar botão de login
+            <Button
+              title="Fazer Login"
+              onPress={handleGoToLogin}
+              style={styles.button}
+            />
+          ) : (
+            // Se foi outro erro, permitir tentar novamente
+            <>
+              <Button
+                title="Tentar Novamente"
+                onPress={() => {
+                  setUploadComplete(false);
+                  handleUpload();
+                }}
+                variant="outline"
+                style={styles.button}
+              />
+              <Button
+                title="Voltar ao Início"
+                onPress={handleFinish}
+                style={styles.button}
+              />
+            </>
+          )}
         </View>
       </View>
     </Container>

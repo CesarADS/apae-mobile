@@ -33,6 +33,7 @@
     },
     "plugins": [
       "expo-router",
+      "react-native-document-scanner-plugin",
       [
         "expo-splash-screen",
         {

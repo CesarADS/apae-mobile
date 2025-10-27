@@ -1,9 +1,10 @@
-import { Button, Container, Typography } from '@/components';
+import { Button, Typography } from '@/components';
 import { CapturedPage, EntityType } from '@/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function PagesScreen() {
   const router = useRouter();
@@ -87,48 +88,58 @@ export default function PagesScreen() {
   );
 
   return (
-    <Container>
-      <View style={styles.header}>
-        <Typography variant="h2">Páginas Capturadas</Typography>
-        <Typography variant="body" style={styles.subtitle}>
-          {pages.length} {pages.length === 1 ? 'página' : 'páginas'}
-        </Typography>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Typography variant="h2">Páginas Capturadas</Typography>
+          <Typography variant="body" style={styles.subtitle}>
+            {pages.length} {pages.length === 1 ? 'página' : 'páginas'}
+          </Typography>
+        </View>
 
-      <FlatList
-        data={pages}
-        renderItem={renderPage}
-        keyExtractor={(_, index) => `page-${index}`}
-        numColumns={2}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Typography variant="body" style={styles.emptyText}>
-              Nenhuma página capturada
-            </Typography>
-          </View>
-        }
-      />
+        <FlatList
+          data={pages}
+          renderItem={renderPage}
+          keyExtractor={(_, index) => `page-${index}`}
+          numColumns={2}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Typography variant="body" style={styles.emptyText}>
+                Nenhuma página capturada
+              </Typography>
+            </View>
+          }
+        />
 
-      <View style={styles.footer}>
-        <Button
-          title="Adicionar Página"
-          onPress={handleAddPage}
-          variant="outline"
-          style={styles.addButton}
-        />
-        <Button
-          title="Finalizar"
-          onPress={handleContinue}
-          disabled={pages.length === 0}
-          style={styles.finishButton}
-        />
+        <View style={styles.footer}>
+          <Button
+            title="Adicionar Página"
+            onPress={handleAddPage}
+            variant="outline"
+            style={styles.addButton}
+          />
+          <Button
+            title="Finalizar"
+            onPress={handleContinue}
+            disabled={pages.length === 0}
+            style={styles.finishButton}
+          />
+        </View>
       </View>
-    </Container>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFF',
+  },
+  container: {
+    flex: 1,
+    padding: 16,
+  },
   header: {
     marginBottom: 16,
   },
