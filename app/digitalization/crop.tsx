@@ -1,7 +1,6 @@
 import { Button, Container, Typography } from '@/components';
 import { EntityType } from '@/types';
 import * as ImageManipulator from 'expo-image-manipulator';
-import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Dimensions, Image, StyleSheet, View } from 'react-native';
@@ -20,32 +19,6 @@ export default function CropScreen() {
 
   const [processing, setProcessing] = useState(false);
   const [editedImageUri, setEditedImageUri] = useState<string>(imageUri);
-
-  const handleEditImage = async () => {
-    try {
-      setProcessing(true);
-
-      // Abrir editor nativo de crop usando expo-image-picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 1,
-        base64: false,
-      });
-
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const newUri = result.assets[0].uri;
-        setEditedImageUri(newUri);
-        Alert.alert('✅ Sucesso', 'Imagem recortada com sucesso!');
-      }
-
-      setProcessing(false);
-    } catch (error: any) {
-      setProcessing(false);
-      console.error('Erro ao recortar:', error);
-      Alert.alert('Erro', 'Não foi possível abrir o editor de recorte');
-    }
-  };
 
   const handleCrop = async () => {
     if (!editedImageUri) {
@@ -120,13 +93,6 @@ export default function CropScreen() {
       </View>
 
       <View style={styles.footer}>
-        <Button
-          title="Recortar"
-          onPress={handleEditImage}
-          variant="outline"
-          style={styles.button}
-          disabled={processing}
-        />
         <Button
           title="Tirar Outra"
           onPress={handleRetake}
