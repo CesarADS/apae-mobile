@@ -23,10 +23,11 @@ interface InstituicaoFormData {
 
 interface InstituicaoFormProps {
   onChange: (data: InstituicaoFormData, isValid: boolean) => void;
+  prefillData?: InstituicaoFormData | null;
 }
 
-const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange }) => {
-  const { data } = useAuth(); // Obter token do contexto
+const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange, prefillData }) => {
+  const { data } = useAuth();
   
   // Criar apiClient com token inicial
   const api = useApiClient({ initialToken: data?.token || null });
@@ -46,7 +47,7 @@ const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange }) => {
   const [loading, setLoading] = useState(true);
   
   const [formData, setFormData] = useState<InstituicaoFormData>({
-    titulo: '',
+    titulo: prefillData?.titulo || '',
     tipoDocumento: '',
     dataDocumento: new Date(),
   });

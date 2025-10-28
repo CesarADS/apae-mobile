@@ -30,10 +30,11 @@ interface ColaboradorFormData {
 
 interface ColaboradorFormProps {
   onChange: (data: ColaboradorFormData, isValid: boolean) => void;
+  prefillData?: ColaboradorFormData | null;
 }
 
-const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange }) => {
-  const { data } = useAuth(); // Obter token do contexto
+const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange, prefillData }) => {
+  const { data } = useAuth();
   
   // Criar apiClient com token inicial
   const api = useApiClient({ initialToken: data?.token || null });
@@ -49,17 +50,41 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange }) => {
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
   const [tiposDocumento, setTiposDocumento] = useState<TipoDocumento[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(prefillData?.colaboradorNome || '');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedColaborador, setSelectedColaborador] = useState<Colaborador | null>(null);
   
   const [formData, setFormData] = useState<ColaboradorFormData>({
-    colaboradorId: null,
-    colaboradorNome: '',
+    colaboradorId: prefillData?.colaboradorId || null,
+    colaboradorNome: prefillData?.colaboradorNome || '',
     tipoDocumento: '',
     dataDocumento: new Date(),
   });
+
+  // Preencher colaborador selecionado se veio dos dados pré-preenchidos
+  useEffect(() => {
+    const fetchColaboradorCompleto = async () => {
+      if (prefillData?.colaboradorId && data?.token) {
+        try {
+          // Buscar dados completos do colaborador pelo ID
+          const colaborador = await api.get<Colaborador>(`/colaboradores/${prefillData.colaboradorId}`);
+          setSelectedColaborador(colaborador);
+          setSearchTerm(`${colaborador.nome} - CPF: ${colaborador.cpf}`);
+        } catch (error) {
+          // Se não conseguir buscar, usar dados parciais
+          setSelectedColaborador({
+            id: prefillData.colaboradorId,
+            nome: prefillData.colaboradorNome,
+            cpf: '',
+          });
+          setSearchTerm(prefillData.colaboradorNome);
+        }
+      }
+    };
+
+    fetchColaboradorCompleto();
+  }, [prefillData, data?.token]);
 
   // Buscar tipos de documento de COLABORADOR
   useEffect(() => {

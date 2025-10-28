@@ -1,6 +1,7 @@
 import { Button, Input, Typography } from '@/components';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks';
+import { MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import React, { useEffect, useState } from 'react';
@@ -31,65 +32,71 @@ interface AlunoFormData {
 
 interface AlunoFormProps {
   onChange: (data: AlunoFormData, isValid: boolean) => void;
+  prefillData?: AlunoFormData | null;
 }
 
-const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
-  const { data } = useAuth(); // Obter token do contexto
-  
-  // Log de debug
-  console.log('[AlunoForm] Montado - Token disponível:', !!data?.token);
-  console.log('[AlunoForm] Data completo:', data ? 'presente' : 'ausente');
-  
-  // Criar apiClient com token inicial
+const AlunoForm: React.FC<AlunoFormProps> = ({ onChange, prefillData }) => {
+  const { data } = useAuth();
   const api = useApiClient({ initialToken: data?.token || null });
   
   // Atualizar token quando mudar
   useEffect(() => {
     if (data?.token) {
-      console.log('[AlunoForm] Definindo token no apiClient');
       api.setToken(data.token);
-    } else {
-      console.log('[AlunoForm] AVISO: Token não disponível no useEffect');
     }
   }, [data?.token]);
   
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [tiposDocumento, setTiposDocumento] = useState<TipoDocumento[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(prefillData?.alunoNome || '');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null);
   
   const [formData, setFormData] = useState<AlunoFormData>({
-    alunoId: null,
-    alunoNome: '',
-    tipoDocumento: '',
-    dataDocumento: new Date(),
+    alunoId: prefillData?.alunoId || null,
+    alunoNome: prefillData?.alunoNome || '',
+    tipoDocumento: '', // Sempre limpar tipo de documento (usuário deve escolher novo)
+    dataDocumento: new Date(), // Sempre data atual para novo documento
   });
+
+  // Preencher aluno selecionado se veio dos dados pré-preenchidos
+  useEffect(() => {
+    const fetchAlunoCompleto = async () => {
+      if (prefillData?.alunoId && data?.token) {
+        try {
+          // Buscar dados completos do aluno pelo ID
+          const aluno = await api.get<Aluno>(`/alunos/${prefillData.alunoId}`);
+          setSelectedAluno(aluno);
+          setSearchTerm(`${aluno.nome} - Matrícula: ${aluno.matricula}`);
+        } catch (error) {
+          // Se não conseguir buscar, usar dados parciais
+          setSelectedAluno({
+            id: prefillData.alunoId,
+            nome: prefillData.alunoNome,
+            cpf: '',
+            matricula: '',
+          });
+          setSearchTerm(prefillData.alunoNome);
+        }
+      }
+    };
+
+    fetchAlunoCompleto();
+  }, [prefillData, data?.token]);
 
   // Buscar tipos de documento da categoria ALUNO
   useEffect(() => {
     const fetchTiposDocumento = async () => {
       try {
-        console.log('[AlunoForm] Buscando tipos de documento, token presente:', !!data?.token);
         const response = await api.get<TipoDocumento[]>('/tipo-documento/ativos');
-        console.log('[AlunoForm] Resposta completa da API:', response);
-        console.log('[AlunoForm] Total de tipos de documento recebidos:', response?.length || 0);
         
-        // Filtrar apenas os tipos de documento de ALUNO (institucional=false e colaborador=false)
-        const tiposAluno = (response || []).filter(tipo => {
-          console.log('[AlunoForm] Tipo:', tipo.nome, 'institucional:', tipo.institucional, 'colaborador:', tipo.colaborador);
-          return !tipo.institucional && !tipo.colaborador;
-        });
-        console.log('[AlunoForm] Tipos de documento ALUNO encontrados:', tiposAluno.length);
-        console.log('[AlunoForm] Tipos ALUNO:', tiposAluno);
+        // Filtrar apenas os tipos de documento de ALUNO
+        const tiposAluno = (response || []).filter(tipo => !tipo.institucional && !tipo.colaborador);
         setTiposDocumento(tiposAluno);
       } catch (error: any) {
         const errorMessage = error?.message || 'Erro desconhecido';
-        console.error('[AlunoForm] Erro ao carregar tipos de documento:', errorMessage);
-        console.error('[AlunoForm] Erro completo:', error);
-        // Não mostrar alerta para erro de token (será tratado no contexto)
         if (!errorMessage.includes('Usuário ou senha inválidos')) {
           Alert.alert('Erro', 'Não foi possível carregar os tipos de documento');
         }
@@ -98,8 +105,6 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
 
     if (data?.token) {
       fetchTiposDocumento();
-    } else {
-      console.log('[AlunoForm] Token não disponível ainda');
     }
   }, [data?.token]);
 
@@ -112,24 +117,16 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
       return;
     }
 
-    if (!data?.token) {
-      console.log('[AlunoForm] Não pode buscar alunos - token não disponível');
-      return;
-    }
+    if (!data?.token) return;
 
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        console.log('[AlunoForm] Buscando alunos com termo:', searchTerm);
-        // Corrigido: usar /alunos/all e termoBusca como parâmetro
         const response = await api.get<{ content: Aluno[] }>(`/alunos/all?termoBusca=${searchTerm}&page=0&size=10`);
-        console.log('[AlunoForm] Alunos encontrados:', response.content?.length || 0);
         setAlunos(response.content || []);
         setShowSuggestions(true);
       } catch (error: any) {
         const errorMessage = error?.message || 'Erro desconhecido';
-        console.error('[AlunoForm] Erro ao buscar alunos:', errorMessage);
-        // Não mostrar alerta para erro de token
         if (!errorMessage.includes('Usuário ou senha inválidos')) {
           Alert.alert('Erro', 'Não foi possível buscar alunos');
         }
@@ -175,27 +172,42 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
 
   return (
     <View style={styles.container}>
-      {/* Campo de busca de aluno moderno */}
-      <View style={styles.field}>
-        <Typography variant="body" style={styles.label}>
-          Aluno *
+      {/* Header com ícone */}
+      <View style={styles.header}>
+        <View style={styles.iconContainer}>
+          <MaterialIcons name="school" size={56} color="#007BFF" />
+        </View>
+        <Typography variant="h2" color="primary" style={styles.headerTitle}>
+          Documento do Aluno
         </Typography>
-        <Input
-          placeholder="Digite nome, matrícula ou CPF..."
-          value={searchTerm}
-          onChangeText={(text) => {
-            setSearchTerm(text);
-            if (selectedAluno) {
-              setSelectedAluno(null);
-              setFormData(prev => ({ ...prev, alunoId: null, alunoNome: '' }));
-            }
-          }}
-          autoCapitalize="words"
-        />
-        {loading && <ActivityIndicator style={styles.loader} />}
-        
-        {/* Lista de sugestões */}
-        {showSuggestions && alunos.length > 0 && (
+        <Typography variant="body" color="secondary" align="center" style={styles.headerSubtitle}>
+          Preencha as informações abaixo para digitalizar o documento
+        </Typography>
+      </View>
+
+      {/* Card com formulário */}
+      <View style={styles.formCard}>
+        {/* Campo de busca de aluno */}
+        <View style={styles.field}>
+          <Typography variant="body" style={styles.label}>
+            Aluno *
+          </Typography>
+          <Input
+            placeholder="Digite nome, matrícula ou CPF..."
+            value={searchTerm}
+            onChangeText={(text) => {
+              setSearchTerm(text);
+              if (selectedAluno) {
+                setSelectedAluno(null);
+                setFormData(prev => ({ ...prev, alunoId: null, alunoNome: '' }));
+              }
+            }}
+            autoCapitalize="words"
+          />
+          {loading && <ActivityIndicator style={styles.loader} />}
+          
+          {/* Lista de sugestões */}
+          {showSuggestions && alunos.length > 0 && (
           <View style={styles.suggestionsContainer}>
             <FlatList
               data={alunos}
@@ -221,54 +233,55 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
         )}
         
         {/* Aluno selecionado */}
-        {selectedAluno && (
-          <View style={styles.selectedAlunoContainer}>
-            <Typography variant="body" color="primary" style={styles.selectedAlunoText}>
-              ✓ {selectedAluno.nome} - Matrícula: {selectedAluno.matricula}
-            </Typography>
-          </View>
-        )}
-      </View>
-
-      {/* Picker de tipo de documento */}
-      <View style={styles.field}>
-        <Typography variant="body" style={styles.label}>
-          Tipo de Documento *
-        </Typography>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={formData.tipoDocumento}
-            onValueChange={(value: string) => setFormData(prev => ({ ...prev, tipoDocumento: value }))}
-            style={styles.picker}
-          >
-            <Picker.Item label="Selecione o tipo..." value="" />
-            {tiposDocumento.map(tipo => (
-              <Picker.Item key={tipo.id} label={tipo.nome} value={tipo.nome} />
-            ))}
-          </Picker>
+          {selectedAluno && (
+            <View style={styles.selectedAlunoContainer}>
+              <Typography variant="body" color="primary" style={styles.selectedAlunoText}>
+                ✓ {selectedAluno.nome} - Matrícula: {selectedAluno.matricula}
+              </Typography>
+            </View>
+          )}
         </View>
-      </View>
 
-      {/* Data do documento */}
-      <View style={styles.field}>
-        <Typography variant="body" style={styles.label}>
-          Data do Documento *
-        </Typography>
-        <Button
-          title={formData.dataDocumento.toLocaleDateString('pt-BR')}
-          onPress={() => setShowDatePicker(true)}
-          variant="outline"
-        />
-        {showDatePicker && (
-          <DateTimePicker
-            value={formData.dataDocumento}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
-            maximumDate={new Date()}
-            locale="pt-BR"
+        {/* Picker de tipo de documento */}
+        <View style={styles.field}>
+          <Typography variant="body" style={styles.label}>
+            Tipo de Documento *
+          </Typography>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.tipoDocumento}
+              onValueChange={(value: string) => setFormData(prev => ({ ...prev, tipoDocumento: value }))}
+              style={styles.picker}
+            >
+              <Picker.Item label="Selecione o tipo..." value="" />
+              {tiposDocumento.map(tipo => (
+                <Picker.Item key={tipo.id} label={tipo.nome} value={tipo.nome} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+
+        {/* Data do documento */}
+        <View style={styles.field}>
+          <Typography variant="body" style={styles.label}>
+            Data do Documento *
+          </Typography>
+          <Button
+            title={formData.dataDocumento.toLocaleDateString('pt-BR')}
+            onPress={() => setShowDatePicker(true)}
+            variant="outline"
           />
-        )}
+          {showDatePicker && (
+            <DateTimePicker
+              value={formData.dataDocumento}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+              maximumDate={new Date()}
+              locale="pt-BR"
+            />
+          )}
+        </View>
       </View>
     </View>
   );
@@ -276,10 +289,42 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange }) => {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 16,
+    // Removido flex: 1 para evitar sobreposição
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  iconContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#E3F2FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  headerTitle: {
+    marginBottom: 8,
+  },
+  headerSubtitle: {
+    paddingHorizontal: 24,
+    lineHeight: 22,
+  },
+  formCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   field: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   label: {
     marginBottom: 8,

@@ -20,8 +20,10 @@ export const useDocumentUpload = () => {
   const { request } = useApiClient();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
 
   const generatePDFFromImages = async (pages: CapturedPage[]): Promise<string> => {
+    setProgressMessage('Convertendo imagens em base64...');
     // Converter cada imagem para base64
     const imagesBase64 = await Promise.all(
       pages.map(async (page) => {
@@ -32,6 +34,8 @@ export const useDocumentUpload = () => {
       })
     );
 
+    setProgressMessage('Concatenando páginas em PDF...');
+    
     // Criar HTML com as imagens em base64
     const imagesHtml = imagesBase64
       .map(
@@ -78,20 +82,24 @@ export const useDocumentUpload = () => {
   }: UploadDocumentParams): Promise<UploadDocumentResponse> => {
     setUploading(true);
     setProgress(0);
+    setProgressMessage('Iniciando processo...');
 
     try {
       // Passo 1: Converter imagens para base64 e gerar PDF (50% do progresso)
       setProgress(10);
+      setProgressMessage('Processando imagens...');
       const pdfUri = await generatePDFFromImages(pages);
       setProgress(50);
 
       // Passo 2: Verificar se PDF foi gerado
+      setProgressMessage('Verificando PDF gerado...');
       const pdfInfo = await FileSystem.getInfoAsync(pdfUri);
       if (!pdfInfo.exists) {
         throw new Error('PDF não foi gerado corretamente');
       }
       
       setProgress(60);
+      setProgressMessage('Preparando envio...');
 
       // Passo 3: Preparar FormData conforme o tipo de entidade
       let endpoint: string;
@@ -129,6 +137,7 @@ export const useDocumentUpload = () => {
       setProgress(65);
 
       // Passo 4: Fazer upload
+      setProgressMessage('Enviando documento ao servidor...');
       console.log('[Upload] Endpoint:', endpoint);
       console.log('[Upload] PDF Uri:', pdfUri);
       console.log('[Upload] tipoDocumento:', formData.tipoDocumento);
@@ -143,6 +152,7 @@ export const useDocumentUpload = () => {
       });
 
       setProgress(100);
+      setProgressMessage('Concluído!');
 
       // Limpar arquivo temporário
       await FileSystem.deleteAsync(pdfUri, { idempotent: true });
@@ -161,6 +171,7 @@ export const useDocumentUpload = () => {
     } finally {
       setUploading(false);
       setProgress(0);
+      setProgressMessage('');
     }
   };
 
@@ -168,5 +179,6 @@ export const useDocumentUpload = () => {
     uploadDocument,
     uploading,
     progress,
+    progressMessage,
   };
 };

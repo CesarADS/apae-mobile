@@ -13,15 +13,7 @@ export default function SelectEntityScreen() {
   // Obter permissões do usuário
   const userPermissions = data?.userPermissions;
   
-  // DEBUG: Log para verificar as permissões
-  console.log('[SelectEntity] data completo:', data);
-  console.log('[SelectEntity] userPermissions:', userPermissions);
-  console.log('[SelectEntity] canAccessAluno:', userPermissions?.canAccessAluno);
-  console.log('[SelectEntity] canAccessColaborador:', userPermissions?.canAccessColaborador);
-  console.log('[SelectEntity] canAccessInstituicao:', userPermissions?.canAccessInstituicao);
-  
   const handleSelectEntity = (entityType: EntityType) => {
-    console.log('Selecionando entidade:', entityType);
     // Navegar para a tela de formulário passando o tipo de entidade
     router.push(`./form?entityType=${entityType}` as any);
   };
@@ -122,27 +114,28 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 24,
+    padding: 16, // Reduzido de 24 para 16
     justifyContent: 'center',
   },
   title: {
-    marginBottom: 16,
+    marginBottom: 12, // Reduzido de 16
   },
   subtitle: {
-    marginBottom: 40,
+    marginBottom: 32, // Reduzido de 40
+    paddingHorizontal: 8,
   },
   optionsContainer: {
-    gap: 20,
+    gap: 16, // Reduzido de 20
   },
   optionCard: {
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 12, // Reduzido de 16
+    padding: 20, // Reduzido de 24
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-    minHeight: 140,
+    minHeight: 120, // Reduzido de 140
     justifyContent: 'center',
   },
   alunoCard: {
@@ -156,10 +149,10 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8, // Reduzido de 12
   },
   backButton: {
-    marginTop: 32,
+    marginTop: 24, // Reduzido de 32
     padding: 12,
     alignSelf: 'center',
   },
