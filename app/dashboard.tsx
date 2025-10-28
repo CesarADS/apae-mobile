@@ -106,7 +106,7 @@ export default function DashboardScreen() {
       {/* Header com botão de logout */}
       <View style={styles.header}>
         <Typography variant="h3" color="primary">
-          Dashboard
+          Digitalizador - GED APAE
         </Typography>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
           <Typography variant="body" color="error">

@@ -1,6 +1,7 @@
 import { Button, Input, Typography } from '@/components';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks';
+import { MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import React, { useEffect, useState } from 'react';
@@ -42,7 +43,6 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange, prefillData
   // Atualizar token quando mudar
   useEffect(() => {
     if (data?.token) {
-      console.log('[ColaboradorForm] Definindo token no apiClient');
       api.setToken(data.token);
     }
   }, [data?.token]);
@@ -90,15 +90,12 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange, prefillData
   useEffect(() => {
     const fetchTiposDocumento = async () => {
       try {
-        console.log('[ColaboradorForm] Buscando tipos de documento, token presente:', !!data?.token);
         const response = await api.get<TipoDocumento[]>('/tipo-documento/ativos');
         // Filtrar apenas os tipos de documento de COLABORADOR (colaborador=true)
         const tiposColaborador = (response || []).filter((tipo: TipoDocumento) => tipo.colaborador === true);
-        console.log('[ColaboradorForm] Tipos de documento COLABORADOR encontrados:', tiposColaborador.length);
         setTiposDocumento(tiposColaborador);
       } catch (error: any) {
         const errorMessage = error?.message || 'Erro desconhecido';
-        console.error('[ColaboradorForm] Erro ao carregar tipos de documento:', errorMessage);
         // Não mostrar alerta para erro de token
         if (!errorMessage.includes('Usuário ou senha inválidos')) {
           Alert.alert('Erro', 'Não foi possível carregar os tipos de documento');
@@ -108,8 +105,6 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange, prefillData
 
     if (data?.token) {
       fetchTiposDocumento();
-    } else {
-      console.log('[ColaboradorForm] Token não disponível ainda');
     }
   }, [data?.token]);
 
@@ -123,29 +118,24 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange, prefillData
     }
 
     if (!data?.token) {
-      console.log('[ColaboradorForm] Não pode buscar colaboradores - token não disponível');
       return;
     }
 
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        console.log('[ColaboradorForm] Buscando colaboradores com termo:', searchTerm);
         // Busca todos e filtra localmente (backend não tem busca por termo)
         const response = await api.get<{ content: Colaborador[] }>(`/colaboradores?page=0&size=100`);
-        console.log('[ColaboradorForm] Colaboradores totais recebidos:', response.content?.length || 0);
         
         // Filtrar localmente por nome ou CPF
         const filtrados = (response.content || []).filter(col => 
           col.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
           col.cpf.includes(searchTerm)
         );
-        console.log('[ColaboradorForm] Colaboradores filtrados:', filtrados.length);
         setColaboradores(filtrados.slice(0, 10)); // Limitar a 10 resultados
         setShowSuggestions(true);
       } catch (error: any) {
         const errorMessage = error?.message || 'Erro desconhecido';
-        console.error('[ColaboradorForm] Erro ao buscar colaboradores:', errorMessage);
         // Não mostrar alerta para erro de token
         if (!errorMessage.includes('Usuário ou senha inválidos')) {
           Alert.alert('Erro', 'Não foi possível buscar colaboradores');
@@ -192,27 +182,42 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange, prefillData
 
   return (
     <View style={styles.container}>
-      {/* Campo de busca de colaborador moderno */}
-      <View style={styles.field}>
-        <Typography variant="body" style={styles.label}>
-          Colaborador *
+      {/* Header com ícone */}
+      <View style={styles.header}>
+        <View style={styles.iconContainer}>
+          <MaterialIcons name="badge" size={56} color="#007BFF" />
+        </View>
+        <Typography variant="h2" color="primary" style={styles.headerTitle}>
+          Documento do Colaborador
         </Typography>
-        <Input
-          placeholder="Digite nome ou CPF..."
-          value={searchTerm}
-          onChangeText={(text) => {
-            setSearchTerm(text);
-            if (selectedColaborador) {
-              setSelectedColaborador(null);
-              setFormData(prev => ({ ...prev, colaboradorId: null, colaboradorNome: '' }));
-            }
-          }}
-          autoCapitalize="words"
-        />
-        {loading && <ActivityIndicator style={styles.loader} />}
-        
-        {/* Lista de sugestões */}
-        {showSuggestions && colaboradores.length > 0 && (
+        <Typography variant="body" color="secondary" align="center" style={styles.headerSubtitle}>
+          Preencha as informações abaixo para digitalizar o documento
+        </Typography>
+      </View>
+
+      {/* Card com formulário */}
+      <View style={styles.formCard}>
+        {/* Campo de busca de colaborador */}
+        <View style={styles.field}>
+          <Typography variant="body" style={styles.label}>
+            Colaborador *
+          </Typography>
+          <Input
+            placeholder="Digite nome ou CPF..."
+            value={searchTerm}
+            onChangeText={(text) => {
+              setSearchTerm(text);
+              if (selectedColaborador) {
+                setSelectedColaborador(null);
+                setFormData(prev => ({ ...prev, colaboradorId: null, colaboradorNome: '' }));
+              }
+            }}
+            autoCapitalize="words"
+          />
+          {loading && <ActivityIndicator style={styles.loader} />}
+          
+          {/* Lista de sugestões */}
+          {showSuggestions && colaboradores.length > 0 && (
           <View style={styles.suggestionsContainer}>
             <FlatList
               data={colaboradores}
@@ -238,54 +243,55 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange, prefillData
         )}
         
         {/* Colaborador selecionado */}
-        {selectedColaborador && (
-          <View style={styles.selectedColaboradorContainer}>
-            <Typography variant="body" color="primary" style={styles.selectedColaboradorText}>
-              ✓ {selectedColaborador.nome} - CPF: {selectedColaborador.cpf}
-            </Typography>
-          </View>
-        )}
-      </View>
-
-      {/* Picker de tipo de documento */}
-      <View style={styles.field}>
-        <Typography variant="body" style={styles.label}>
-          Tipo de Documento *
-        </Typography>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={formData.tipoDocumento}
-            onValueChange={(value: string) => setFormData(prev => ({ ...prev, tipoDocumento: value }))}
-            style={styles.picker}
-          >
-            <Picker.Item label="Selecione o tipo..." value="" />
-            {tiposDocumento.map(tipo => (
-              <Picker.Item key={tipo.id} label={tipo.nome} value={tipo.nome} />
-            ))}
-          </Picker>
+          {selectedColaborador && (
+            <View style={styles.selectedColaboradorContainer}>
+              <Typography variant="body" color="primary" style={styles.selectedColaboradorText}>
+                ✓ {selectedColaborador.nome} - CPF: {selectedColaborador.cpf}
+              </Typography>
+            </View>
+          )}
         </View>
-      </View>
 
-      {/* Data do documento */}
-      <View style={styles.field}>
-        <Typography variant="body" style={styles.label}>
-          Data do Documento *
-        </Typography>
-        <Button
-          title={formData.dataDocumento.toLocaleDateString('pt-BR')}
-          onPress={() => setShowDatePicker(true)}
-          variant="outline"
-        />
-        {showDatePicker && (
-          <DateTimePicker
-            value={formData.dataDocumento}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
-            maximumDate={new Date()}
-            locale="pt-BR"
+        {/* Picker de tipo de documento */}
+        <View style={styles.field}>
+          <Typography variant="body" style={styles.label}>
+            Tipo de Documento *
+          </Typography>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.tipoDocumento}
+              onValueChange={(value: string) => setFormData(prev => ({ ...prev, tipoDocumento: value }))}
+              style={styles.picker}
+            >
+              <Picker.Item label="Selecione o tipo..." value="" />
+              {tiposDocumento.map(tipo => (
+                <Picker.Item key={tipo.id} label={tipo.nome} value={tipo.nome} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+
+        {/* Data do documento */}
+        <View style={styles.field}>
+          <Typography variant="body" style={styles.label}>
+            Data do Documento *
+          </Typography>
+          <Button
+            title={formData.dataDocumento.toLocaleDateString('pt-BR')}
+            onPress={() => setShowDatePicker(true)}
+            variant="outline"
           />
-        )}
+          {showDatePicker && (
+            <DateTimePicker
+              value={formData.dataDocumento}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+              maximumDate={new Date()}
+              locale="pt-BR"
+            />
+          )}
+        </View>
       </View>
     </View>
   );
@@ -294,6 +300,35 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange, prefillData
 const styles = StyleSheet.create({
   container: {
     gap: 16,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  iconContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#E3F2FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  headerTitle: {
+    marginBottom: 8,
+  },
+  headerSubtitle: {
+    paddingHorizontal: 20,
+  },
+  formCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   field: {
     marginBottom: 16,

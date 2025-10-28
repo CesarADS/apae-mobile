@@ -1,10 +1,11 @@
 import { Button, Input, Typography } from '@/components';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks';
+import { MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 interface TipoDocumento {
   id: number;
@@ -35,12 +36,9 @@ const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange, prefillData
   // Atualizar token quando mudar
   useEffect(() => {
     if (data?.token) {
-      console.log('[InstituicaoForm] Definindo token no apiClient');
       api.setToken(data.token);
     }
   }, [data?.token]);
-  
-  console.log('InstituicaoForm renderizando...');
   
   const [tiposDocumento, setTiposDocumento] = useState<TipoDocumento[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -56,16 +54,12 @@ const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange, prefillData
   useEffect(() => {
     const fetchTiposDocumento = async () => {
       try {
-        console.log('[InstituicaoForm] Buscando tipos de documento, token presente:', !!data?.token);
         const response = await api.get<TipoDocumento[]>('/tipo-documento/ativos');
-        console.log('[InstituicaoForm] Tipos de documento recebidos:', response);
         // Filtrar apenas os tipos de documento de INSTITUIÇÃO (institucional=true)
         const tiposInstitucional = (response || []).filter((tipo: TipoDocumento) => tipo.institucional === true);
-        console.log('[InstituicaoForm] Tipos de documento INSTITUCIONAL encontrados:', tiposInstitucional.length);
         setTiposDocumento(tiposInstitucional);
       } catch (error: any) {
         const errorMessage = error?.message || 'Erro desconhecido';
-        console.error('[InstituicaoForm] Erro ao buscar tipos:', errorMessage);
         // Não mostrar alerta para erro de token
         if (!errorMessage.includes('Usuário ou senha inválidos')) {
           Alert.alert('Erro', 'Não foi possível carregar os tipos de documento');
@@ -78,7 +72,6 @@ const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange, prefillData
     if (data?.token) {
       fetchTiposDocumento();
     } else {
-      console.log('[InstituicaoForm] Token não disponível ainda');
       setLoading(false);
     }
   }, [data?.token]);
@@ -105,77 +98,73 @@ const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange, prefillData
 
   return (
     <View style={styles.container}>
-        <Typography variant="h3" style={{ marginBottom: 16 }}>
-          Formulário Institucional
-        </Typography>
-      
-        <View style={{ padding: 20, backgroundColor: '#f0f0f0', borderRadius: 8, marginBottom: 16 }}>
-          <Typography variant="body" style={{ marginBottom: 8 }}>
-            ✅ O formulário está renderizando!
-          </Typography>
-          <Typography variant="caption">
-            Tipos disponíveis: {tiposDocumento.length}
-          </Typography>
+      {/* Header com ícone */}
+      <View style={styles.header}>
+        <View style={styles.iconContainer}>
+          <MaterialIcons name="business" size={56} color="#007BFF" />
         </View>
-      
-        {loading && (
-          <View style={{ padding: 20, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#007BFF" />
-            <Typography>Carregando...</Typography>
-          </View>
-        )}
-      
-      {/* Campo de título */}
-      <View style={styles.field}>
-        <Typography variant="body" style={styles.label}>
-          Título do Documento *
+        <Typography variant="h2" color="primary" style={styles.headerTitle}>
+          Documento Institucional
         </Typography>
-        <Input
-          placeholder="Digite o título..."
-          value={formData.titulo}
-          onChangeText={(titulo) => setFormData(prev => ({ ...prev, titulo }))}
-          autoCapitalize="words"
-        />
+        <Typography variant="body" color="secondary" align="center" style={styles.headerSubtitle}>
+          Preencha as informações abaixo para digitalizar o documento
+        </Typography>
       </View>
+
+      {/* Card com formulário */}
+      <View style={styles.formCard}>
+        {/* Campo de título */}
+        <View style={styles.field}>
+          <Typography variant="body" style={styles.label}>
+            Título do Documento *
+          </Typography>
+          <Input
+            placeholder="Digite o título..."
+            value={formData.titulo}
+            onChangeText={(titulo) => setFormData(prev => ({ ...prev, titulo }))}
+            autoCapitalize="words"
+          />
+        </View>
 
       {/* Picker de tipo de documento */}
-      <View style={styles.field}>
-        <Typography variant="body" style={styles.label}>
-          Tipo de Documento *
-        </Typography>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={formData.tipoDocumento}
-            onValueChange={(value: string) => setFormData(prev => ({ ...prev, tipoDocumento: value }))}
-            style={styles.picker}
-          >
-            <Picker.Item label="Selecione o tipo..." value="" />
-            {tiposDocumento.map(tipo => (
-              <Picker.Item key={tipo.id} label={tipo.nome} value={tipo.nome} />
-            ))}
-          </Picker>
+        <View style={styles.field}>
+          <Typography variant="body" style={styles.label}>
+            Tipo de Documento *
+          </Typography>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.tipoDocumento}
+              onValueChange={(value: string) => setFormData(prev => ({ ...prev, tipoDocumento: value }))}
+              style={styles.picker}
+            >
+              <Picker.Item label="Selecione o tipo..." value="" />
+              {tiposDocumento.map(tipo => (
+                <Picker.Item key={tipo.id} label={tipo.nome} value={tipo.nome} />
+              ))}
+            </Picker>
+          </View>
         </View>
-      </View>
 
-      {/* Data do documento */}
-      <View style={styles.field}>
-        <Typography variant="body" style={styles.label}>
-          Data do Documento *
-        </Typography>
-        <Button
-          title={formData.dataDocumento.toLocaleDateString('pt-BR')}
-          onPress={() => setShowDatePicker(true)}
-          variant="outline"
-        />
-        {showDatePicker && (
-          <DateTimePicker
-            value={formData.dataDocumento}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
-            maximumDate={new Date()}
+        {/* Data do documento */}
+        <View style={styles.field}>
+          <Typography variant="body" style={styles.label}>
+            Data do Documento *
+          </Typography>
+          <Button
+            title={formData.dataDocumento.toLocaleDateString('pt-BR')}
+            onPress={() => setShowDatePicker(true)}
+            variant="outline"
           />
-        )}
+          {showDatePicker && (
+            <DateTimePicker
+              value={formData.dataDocumento}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+              maximumDate={new Date()}
+            />
+          )}
+        </View>
       </View>
     </View>
   );
@@ -184,6 +173,35 @@ const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange, prefillData
 const styles = StyleSheet.create({
   container: {
     gap: 16,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  iconContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#E3F2FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  headerTitle: {
+    marginBottom: 8,
+  },
+  headerSubtitle: {
+    paddingHorizontal: 20,
+  },
+  formCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   field: {
     marginBottom: 16,
@@ -197,9 +215,11 @@ const styles = StyleSheet.create({
     borderColor: '#007BFF',
     borderRadius: 8,
     backgroundColor: '#FFF',
+    overflow: 'hidden',
+    marginVertical: -4,
   },
   picker: {
-    height: 48,
+    height: 56,
   },
 });
 
