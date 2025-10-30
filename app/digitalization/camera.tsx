@@ -30,10 +30,10 @@ export default function CameraScreen() {
       setIsScanning(true);
       console.log('Abrindo scanner de documentos...');
       
-      // Abrir scanner com detecção automática de bordas
+      // Abrir scanner com detecção automática de bordas e compressão
       const { scannedImages } = await DocumentScanner.scanDocument({
         maxNumDocuments: 1, // Captura 1 documento por vez
-        croppedImageQuality: 100, // Qualidade máxima
+        croppedImageQuality: 70, // 70% de qualidade (reduz tamanho significativamente)
       });
 
       console.log('Resultado do scanner:', scannedImages);

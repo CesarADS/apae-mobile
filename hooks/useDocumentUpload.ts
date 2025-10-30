@@ -1,5 +1,6 @@
-import { CapturedPage, EntityType } from '@/types';
+﻿import { CapturedPage, EntityType } from '@/types';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as Print from 'expo-print';
 import { useState } from 'react';
 import { useApiClient } from './useApiClient';
@@ -23,20 +24,38 @@ export const useDocumentUpload = () => {
   const [progressMessage, setProgressMessage] = useState('');
 
   const generatePDFFromImages = async (pages: CapturedPage[]): Promise<string> => {
-    setProgressMessage('Convertendo imagens em base64...');
-    // Converter cada imagem para base64
+    setProgressMessage('Processando imagens...');
+    
+    const compressedImages = await Promise.all(
+      pages.map(async (page, index) => {
+        setProgressMessage(`Comprimindo imagem ${index + 1}/${pages.length}...`);
+        
+        const compressed = await ImageManipulator.manipulateAsync(
+          page.uri,
+          [{ resize: { width: 1200 } }],
+          {
+            compress: 0.6,
+            format: ImageManipulator.SaveFormat.JPEG,
+          }
+        );
+        
+        return compressed.uri;
+      })
+    );
+
+    setProgressMessage('Convertendo para PDF...');
+    
     const imagesBase64 = await Promise.all(
-      pages.map(async (page) => {
-        const base64 = await FileSystem.readAsStringAsync(page.uri, {
+      compressedImages.map(async (uri) => {
+        const base64 = await FileSystem.readAsStringAsync(uri, {
           encoding: 'base64',
         });
         return `data:image/jpeg;base64,${base64}`;
       })
     );
 
-    setProgressMessage('Concatenando páginas em PDF...');
+    setProgressMessage('Gerando PDF...');
     
-    // Criar HTML com as imagens em base64
     const imagesHtml = imagesBase64
       .map(
         (base64Image) => `
@@ -63,16 +82,15 @@ export const useDocumentUpload = () => {
       </html>
     `;
 
-    // Gerar PDF
     const { uri } = await Print.printToFileAsync({ html });
+    
+    await Promise.all(
+      compressedImages.map((uri) =>
+        FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {})
+      )
+    );
+    
     return uri;
-  };
-
-  const convertFileToBase64 = async (uri: string): Promise<string> => {
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: 'base64',
-    });
-    return base64;
   };
 
   const uploadDocument = async ({
@@ -85,48 +103,47 @@ export const useDocumentUpload = () => {
     setProgressMessage('Iniciando processo...');
 
     try {
-      // Passo 1: Converter imagens para base64 e gerar PDF (50% do progresso)
       setProgress(10);
-      setProgressMessage('Processando imagens...');
       const pdfUri = await generatePDFFromImages(pages);
-      setProgress(50);
+      setProgress(60);
 
-      // Passo 2: Verificar se PDF foi gerado
       setProgressMessage('Verificando PDF gerado...');
       const pdfInfo = await FileSystem.getInfoAsync(pdfUri);
       if (!pdfInfo.exists) {
         throw new Error('PDF não foi gerado corretamente');
       }
       
-      setProgress(60);
+      const sizeInMB = pdfInfo.size ? (pdfInfo.size / (1024 * 1024)).toFixed(2) : '0';
+      console.log(`[Upload] Tamanho do PDF: ${sizeInMB} MB`);
+      
+      if (pdfInfo.size && pdfInfo.size > 40 * 1024 * 1024) {
+        throw new Error(`PDF muito grande (${sizeInMB} MB). Reduza o número de páginas.`);
+      }
+      
+      setProgress(65);
       setProgressMessage('Preparando envio...');
 
-      // Passo 3: Preparar FormData conforme o tipo de entidade
       let endpoint: string;
       const uploadFormData = new FormData();
 
       if (entityType === 'instituicao') {
-        // Documento institucional: POST /institucional/upload
         endpoint = '/institucional/upload';
         uploadFormData.append('titulo', formData.titulo);
         uploadFormData.append('tipoDocumento', formData.tipoDocumento);
-        uploadFormData.append('dataDocumento', formData.dataDocumento.split('T')[0]); // Formato YYYY-MM-DD
+        uploadFormData.append('dataDocumento', formData.dataDocumento.split('T')[0]);
         
-        // Adicionar arquivo PDF - Formato React Native
         uploadFormData.append('file', {
           uri: pdfUri,
           type: 'application/pdf',
           name: `documento_${Date.now()}.pdf`,
         } as any);
       } else {
-        // Documento de pessoa (aluno ou colaborador): POST /documentos/create/{pessoaId}
         const pessoaId = entityType === 'aluno' ? formData.alunoId : formData.colaboradorId;
         endpoint = `/documentos/create/${pessoaId}`;
         
         uploadFormData.append('tipoDocumento', formData.tipoDocumento);
-        uploadFormData.append('dataDocumento', formData.dataDocumento.split('T')[0]); // Formato YYYY-MM-DD
+        uploadFormData.append('dataDocumento', formData.dataDocumento.split('T')[0]);
         
-        // Adicionar arquivo PDF - Formato React Native
         uploadFormData.append('file', {
           uri: pdfUri,
           type: 'application/pdf',
@@ -134,27 +151,19 @@ export const useDocumentUpload = () => {
         } as any);
       }
 
-      setProgress(65);
-
-      // Passo 4: Fazer upload
+      setProgress(70);
       setProgressMessage('Enviando documento ao servidor...');
       console.log('[Upload] Endpoint:', endpoint);
-      console.log('[Upload] PDF Uri:', pdfUri);
-      console.log('[Upload] tipoDocumento:', formData.tipoDocumento);
-      console.log('[Upload] dataDocumento:', formData.dataDocumento.split('T')[0]);
-      
+      console.log('[Upload] Tamanho do PDF:', sizeInMB, 'MB');
+
       const response = await request<{ id: number; message?: string }>(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
         body: uploadFormData as any,
       });
 
       setProgress(100);
       setProgressMessage('Concluído!');
 
-      // Limpar arquivo temporário
       await FileSystem.deleteAsync(pdfUri, { idempotent: true });
 
       return {
@@ -163,7 +172,7 @@ export const useDocumentUpload = () => {
         message: response.message || 'Documento enviado com sucesso!',
       };
     } catch (error: any) {
-      console.error('Erro no upload:', error);
+      console.error('[Upload] Erro:', error);
       return {
         success: false,
         message: error.message || 'Erro ao enviar documento',

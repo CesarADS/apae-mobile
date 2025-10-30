@@ -4,6 +4,7 @@ import { Alert, FlatList, StyleSheet, TouchableOpacity, View } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Container, Typography } from '../components';
+import { Colors } from '../constants/colors';
 import { useAuth } from '../contexts/AuthContext';
 import { useDocuments } from '../hooks';
 import { Document } from '../types';
@@ -78,13 +79,13 @@ export default function DashboardScreen() {
           </Typography>
           <View style={[
             styles.typeTag,
-            { backgroundColor: item.type === 'institucional' ? '#E3F2FD' : '#F3E5F5' }
+            { backgroundColor: item.type === 'institucional' ? Colors.infoLight : Colors.primaryLight + '30' }
           ]}>
             <Typography 
               variant="caption" 
               style={[
                 styles.typeText,
-                { color: item.type === 'institucional' ? '#1976D2' : '#7B1FA2' }
+                { color: item.type === 'institucional' ? Colors.info : Colors.primaryDark }
               ]}
             >
               {item.type === 'institucional' ? 'Institucional' : 'Pessoa'}
@@ -224,7 +225,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   digitalizeButton: {
-    backgroundColor: '#007BFF',
+    backgroundColor: Colors.primary,
     borderRadius: 16,
     padding: 32,
     elevation: 4,
@@ -243,7 +244,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   documentsSection: {
-    flex: 0.6, // 60% da tela
+    flex: 0.6,
     padding: 24,
     paddingTop: 0,
   },
@@ -254,12 +255,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   documentItem: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: Colors.backgroundDark,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E9ECEF',
+    borderColor: Colors.border,
   },
   documentContent: {
     flex: 1,
@@ -302,12 +303,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   errorContainer: {
-    backgroundColor: '#FFE6E6',
+    backgroundColor: Colors.errorLight,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#FF6B6B',
+    borderColor: Colors.error,
   },
   retryButton: {
     marginTop: 12,

@@ -12,6 +12,7 @@ import {
     QRCodeScanner,
     Typography
 } from '../components';
+import { Colors } from '../constants/colors';
 import { useAuth } from '../contexts/AuthContext';
 import { usePasswordRecovery, useQRCode } from '../hooks';
 
@@ -217,7 +218,7 @@ export default function LoginScreen() {
           <IconButton
             iconName="qr-code-scanner"
             size={48}
-            color="#007BFF"
+            color={Colors.primary}
             onPress={openScanner}
           />
           <Typography color="primary" style={styles.qrText}>
@@ -312,10 +313,10 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 16,
     padding: 12,
-    backgroundColor: '#FFE6E6',
+    backgroundColor: Colors.errorLight,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FF6B6B',
+    borderColor: Colors.error,
   },
   errorText: {
     textAlign: 'center',
@@ -326,15 +327,15 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 16,
     padding: 12,
-    backgroundColor: '#FFF8E1',
+    backgroundColor: Colors.warningLight,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FFC107',
+    borderColor: Colors.warning,
   },
   slowText: {
     textAlign: 'center',
     fontSize: 14,
     fontWeight: '500',
-    color: '#7A5A00',
+    color: Colors.text,
   },
 });

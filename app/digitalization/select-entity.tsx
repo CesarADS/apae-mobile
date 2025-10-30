@@ -1,9 +1,11 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Container, Typography } from '../../components';
+import { Colors } from '../../constants/colors';
 import { useAuth } from '../../contexts/AuthContext';
 import { EntityType } from '../../types';
 
@@ -38,9 +40,7 @@ export default function SelectEntityScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.iconContainer}>
-                <Typography variant="h1" style={{ fontSize: 48 }}>
-                  🎓
-                </Typography>
+                <MaterialIcons name="school" size={64} color="#FFFFFF" />
               </View>
               <Typography variant="h3" style={{ color: '#FFF' }} align="center">
                 Aluno
@@ -59,9 +59,7 @@ export default function SelectEntityScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.iconContainer}>
-                <Typography variant="h1" style={{ fontSize: 48 }}>
-                  👔
-                </Typography>
+                <MaterialIcons name="badge" size={64} color="#FFFFFF" />
               </View>
               <Typography variant="h3" style={{ color: '#FFF' }} align="center">
                 Colaborador
@@ -80,9 +78,7 @@ export default function SelectEntityScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.iconContainer}>
-                <Typography variant="h1" style={{ fontSize: 48 }}>
-                  🏛️
-                </Typography>
+                <MaterialIcons name="business" size={64} color="#FFFFFF" />
               </View>
               <Typography variant="h3" style={{ color: '#FFF' }} align="center">
                 Instituição
@@ -139,13 +135,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   alunoCard: {
-    backgroundColor: '#007BFF',
+    backgroundColor: Colors.primary,
   },
   colaboradorCard: {
-    backgroundColor: '#28A745',
+    backgroundColor: Colors.primaryDark,
   },
   instituicaoCard: {
-    backgroundColor: '#7B1FA2',
+    backgroundColor: Colors.accent,
   },
   iconContainer: {
     alignItems: 'center',

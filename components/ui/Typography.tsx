@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TextProps } from 'react-native';
+import { Colors } from '../../constants/colors';
 
 interface TypographyProps extends TextProps {
   variant?: 'h1' | 'h2' | 'h3' | 'body' | 'caption' | 'link';
@@ -68,19 +69,19 @@ const styles = StyleSheet.create({
   
   // Colors
   primary: {
-    color: '#007BFF',
+    color: Colors.primary,
   },
   secondary: {
-    color: '#666666',
+    color: Colors.textSecondary,
   },
   error: {
-    color: '#FF3333',
+    color: Colors.error,
   },
   success: {
-    color: '#28A745',
+    color: Colors.success,
   },
   default: {
-    color: '#222222',
+    color: Colors.text,
   },
   
   // Alignment

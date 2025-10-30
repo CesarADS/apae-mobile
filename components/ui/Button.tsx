@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     TouchableOpacityProps
 } from 'react-native';
+import { Colors } from '../../constants/colors';
 
 interface ButtonProps extends TouchableOpacityProps {
   title: string;
@@ -50,7 +51,7 @@ export const Button: React.FC<ButtonProps> = ({
     >
       {loading ? (
         <ActivityIndicator 
-          color={variant === 'primary' ? '#007BFF' : '#007BFF'} 
+          color={variant === 'primary' ? Colors.primary : Colors.white} 
           size="small"
         />
       ) : (
@@ -70,16 +71,16 @@ const styles = StyleSheet.create({
   
   // Variants
   primary: {
-    backgroundColor: "#FFF",
-    borderColor: "#007BFF",
+    backgroundColor: Colors.surface,
+    borderColor: Colors.primary,
   },
   secondary: {
-    backgroundColor: "#007BFF",
-    borderColor: "#007BFF",
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   outline: {
     backgroundColor: "transparent",
-    borderColor: "#007BFF",
+    borderColor: Colors.primary,
   },
   
   // Sizes
@@ -101,8 +102,8 @@ const styles = StyleSheet.create({
   
   // States
   disabled: {
-    backgroundColor: "#F5F5F5",
-    borderColor: "#CCCCCC",
+    backgroundColor: Colors.background,
+    borderColor: Colors.disabled,
   },
   
   // Text styles
@@ -110,15 +111,15 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   primaryText: {
-    color: "#007BFF",
+    color: Colors.primary,
     fontSize: 18,
   },
   secondaryText: {
-    color: "#FFF",
+    color: Colors.white,
     fontSize: 18,
   },
   outlineText: {
-    color: "#007BFF",
+    color: Colors.primary,
     fontSize: 18,
   },
   
@@ -134,6 +135,6 @@ const styles = StyleSheet.create({
   },
   
   disabledText: {
-    color: "#999999",
+    color: Colors.textLight,
   },
 });
