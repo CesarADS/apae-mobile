@@ -6,10 +6,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
     Button,
     Container,
-    IconButton,
     Input,
     PasswordRecoveryModal,
-    QRCodeScanner,
     Typography
 } from '../components';
 import { Colors } from '../constants/colors';
@@ -213,8 +211,9 @@ export default function LoginScreen() {
           style={[styles.loginButton, { width: '100%' }]}
         />
 
-        {/* QR Code Scanner */}
-        <Container style={styles.qrButton}>
+        {/* QR Code Scanner - TEMPORARIAMENTE DESABILITADO */}
+        {/* Funcionalidade será implementada posteriormente */}
+        {/* <Container style={styles.qrButton}>
           <IconButton
             iconName="qr-code-scanner"
             size={48}
@@ -224,7 +223,7 @@ export default function LoginScreen() {
           <Typography color="primary" style={styles.qrText}>
             Login via QR Code
           </Typography>
-        </Container>
+        </Container> */}
 
         {/* Esqueci minha senha */}
         <TouchableOpacity 
@@ -237,14 +236,14 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </Container>
 
-      {/* QR Code Scanner Modal */}
-      {qrVisible && (
+      {/* QR Code Scanner Modal - TEMPORARIAMENTE DESABILITADO */}
+      {/* {qrVisible && (
         <QRCodeScanner
           visible={qrVisible}
           onClose={closeScanner}
           onScan={handleQRCodeScan}
         />
-      )}
+      )} */}
 
       <PasswordRecoveryModal
         visible={step !== 'idle'}

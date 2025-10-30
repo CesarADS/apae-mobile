@@ -58,9 +58,9 @@ export const useDocumentUpload = () => {
     
     const imagesHtml = imagesBase64
       .map(
-        (base64Image) => `
-        <div style="page-break-after: always;">
-          <img src="${base64Image}" style="width: 100%; height: auto;" />
+        (base64Image, index) => `
+        <div class="page">
+          <img src="${base64Image}" alt="Página ${index + 1}" />
         </div>
       `
       )
@@ -71,9 +71,50 @@ export const useDocumentUpload = () => {
       <html>
         <head>
           <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            body { margin: 0; padding: 0; }
-            img { display: block; }
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            
+            @page {
+              size: A4;
+              margin: 0;
+            }
+            
+            body {
+              margin: 0;
+              padding: 0;
+              width: 100%;
+              height: 100%;
+            }
+            
+            .page {
+              width: 100%;
+              height: 100vh;
+              page-break-after: always;
+              page-break-inside: avoid;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              overflow: hidden;
+              position: relative;
+            }
+            
+            .page:last-child {
+              page-break-after: auto;
+            }
+            
+            img {
+              max-width: 100%;
+              max-height: 100%;
+              width: auto;
+              height: auto;
+              object-fit: contain;
+              display: block;
+            }
           </style>
         </head>
         <body>
