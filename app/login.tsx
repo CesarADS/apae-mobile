@@ -4,11 +4,11 @@ import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Touchabl
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-    Button,
-    Container,
-    Input,
-    PasswordRecoveryModal,
-    Typography
+  Button,
+  Container,
+  Input,
+  PasswordRecoveryModal,
+  Typography
 } from '../components';
 import { Colors } from '../constants/colors';
 import { useAuth } from '../contexts/AuthContext';
@@ -141,7 +141,13 @@ export default function LoginScreen() {
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 }]}
+          contentContainerStyle={[
+            styles.scrollContent, 
+            { 
+              paddingTop: insets.top + 64, // Aumentado de 32 para 64 para melhor centralização sem QR Code
+              paddingBottom: insets.bottom + 32 
+            }
+          ]}
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
@@ -265,6 +271,11 @@ export default function LoginScreen() {
   );
 }
 
+// NOTA: Estilos ajustados para centralização sem o QR Code
+// Para reverter quando implementar QR Code:
+// 1. No ScrollView: paddingTop de 64 volta para 32
+// 2. No forgotButton: marginTop de 48 volta para 32
+// 3. Descomentar qrButton e qrText
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -295,17 +306,19 @@ const styles = StyleSheet.create({
   loginButton: {
     marginTop: 8,
   },
-  qrButton: {
-    marginTop: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qrText: {
-    marginTop: 8,
-  },
+  // Estilos do QR Code - TEMPORARIAMENTE DESABILITADO
+  // Quando reativar o QR Code, descomentar estas linhas:
+  // qrButton: {
+  //   marginTop: 24,
+  //   alignItems: 'center',
+  //   justifyContent: 'center',
+  // },
+  // qrText: {
+  //   marginTop: 8,
+  // },
   forgotButton: {
     alignSelf: 'center',
-    marginTop: 32,
+    marginTop: 48, // Aumentado de 32 para 48 para centralizar melhor sem o QR Code
     padding: 8,
   },
   errorContainer: {

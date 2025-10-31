@@ -36,6 +36,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setState(prev => ({ ...prev, error: null }));
   };
 
+  // Função auxiliar para pegar apenas o primeiro nome ou parte do email
+  const getFirstName = (fullName: string): string => {
+    if (!fullName) return 'Usuário';
+    
+    // Se for um email, pega a parte antes do @
+    if (fullName.includes('@')) {
+      const emailUser = fullName.split('@')[0];
+      // Capitaliza a primeira letra
+      return emailUser.charAt(0).toUpperCase() + emailUser.slice(1);
+    }
+    
+    // Se for um nome completo, pega o primeiro nome
+    const firstName = fullName.trim().split(' ')[0];
+    return firstName;
+  };
+
   const login = async (credentials?: { email: string; password: string }): Promise<boolean> => {
     // Usar credentials passados ou os estados atuais
     const loginEmail = credentials?.email || email;
@@ -83,6 +99,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // Verificar permissões de acesso
       const userPermissions = canAccessMobileApp(decodedToken.permissions);
+      console.log('=== INFORMAÇÕES DO USUÁRIO ===');
+      console.log('Nome do usuário:', decodedToken.nome);
+      console.log('Email:', loginEmail);
+      console.log('ID:', decodedToken.sub);
       console.log('=== PERMISSÕES DO USUÁRIO ===');
       console.log('Todas as permissões:', decodedToken.permissions);
       console.log('Tem TIPO_DOCUMENTO?', decodedToken.permissions.includes('TIPO_DOCUMENTO'));
@@ -96,12 +116,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       api.setToken(result.token);
       console.log('[AUTH] Token salvo! Primeiros caracteres:', result.token.substring(0, 20) + '...');
       
+      // Extrair nome: tenta do token, senão usa email
+      const fullName = decodedToken.nome || loginEmail;
+      const firstName = getFirstName(fullName);
+      
+      console.log('[AUTH] Nome/Email original:', fullName);
+      console.log('[AUTH] Nome para exibição:', firstName);
+      
       setState(prev => ({
         ...prev,
         isAuthenticated: true,
         user: {
           id: decodedToken.sub,
-          name: decodedToken.nome || loginEmail,
+          name: firstName, // ← Usando primeiro nome ou parte do email
           email: loginEmail,
           permissions: decodedToken.permissions,
         },
@@ -109,7 +136,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           token: result.token,
           expiresAt: new Date(decodedToken.exp * 1000).toISOString(),
           permissions: decodedToken.permissions,
-          userPermissions: userPermissions, // ← ADICIONAR userPermissions!
+          userPermissions: userPermissions,
         },
         loading: false,
       }));

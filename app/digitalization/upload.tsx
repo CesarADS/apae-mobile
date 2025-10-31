@@ -101,7 +101,7 @@ export default function UploadScreen() {
           </View>
           
           <Typography variant="h2" style={styles.uploadingTitle}>
-            Enviando Documento
+            Enviando documento...
           </Typography>
           
           <Typography variant="body" style={styles.uploadingSubtitle}>
@@ -144,7 +144,7 @@ export default function UploadScreen() {
           </View>
           
           <Typography variant="h1" style={styles.successTitle}>
-            Documento Enviado!
+            Documento enviado!
           </Typography>
           
           <Typography variant="body" style={styles.successMessage}>
@@ -161,12 +161,12 @@ export default function UploadScreen() {
 
           <View style={styles.actionsContainer}>
             <Button
-              title="Digitalizar Outro Documento"
+              title="Digitalizar outro documento"
               onPress={handleScanAnother}
               style={styles.primaryButton}
             />
             <Button
-              title="Voltar ao Início"
+              title="Voltar ao início"
               onPress={handleFinish}
               variant="outline"
               style={styles.secondaryButton}

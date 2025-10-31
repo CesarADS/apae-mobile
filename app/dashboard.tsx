@@ -10,7 +10,7 @@ import { useDocuments } from '../hooks';
 import { Document } from '../types';
 
 export default function DashboardScreen() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { loading, loadingMore, hasMore, error, fetchAllDocuments, clearError } = useDocuments();
   const [allDocuments, setAllDocuments] = useState<Document[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
@@ -103,11 +103,11 @@ export default function DashboardScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header com botão de logout */}
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* Header com saudação e botão de logout */}
       <View style={styles.header}>
-        <Typography variant="h3" color="primary">
-          Digitalizador - GED APAE
+        <Typography variant="h3" color="primary" style={styles.greetingText}>
+          Olá, {user?.name || 'Usuário'}
         </Typography>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
           <Typography variant="body" color="error">
@@ -208,9 +208,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingTop: 24, // Aumentado para afastar da câmera
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+  },
+  greetingText: {
+    flex: 1, // Permite que o texto ocupe o espaço disponível
+    marginRight: 16, // Espaçamento entre o texto e o botão Sair
   },
   logoutButton: {
     padding: 8,

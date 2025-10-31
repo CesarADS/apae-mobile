@@ -178,7 +178,7 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange, prefillData }) => {
           <MaterialIcons name="school" size={56} color="#007BFF" />
         </View>
         <Typography variant="h2" color="primary" style={styles.headerTitle}>
-          Documento do Aluno
+          Documento do aluno
         </Typography>
         <Typography variant="body" color="secondary" align="center" style={styles.headerSubtitle}>
           Preencha as informações abaixo para digitalizar o documento
@@ -245,7 +245,7 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange, prefillData }) => {
         {/* Picker de tipo de documento */}
         <View style={styles.field}>
           <Typography variant="body" style={styles.label}>
-            Tipo de Documento *
+            Tipo de documento *
           </Typography>
           <View style={styles.pickerContainer}>
             <Picker
@@ -264,7 +264,7 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange, prefillData }) => {
         {/* Data do documento */}
         <View style={styles.field}>
           <Typography variant="body" style={styles.label}>
-            Data do Documento *
+            Data do documento *
           </Typography>
           <Button
             title={formData.dataDocumento.toLocaleDateString('pt-BR')}

@@ -1,4 +1,5 @@
 import { Button, Typography } from '@/components';
+import { Colors } from '@/constants/colors';
 import { CapturedPage, EntityType } from '@/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -32,7 +33,7 @@ export default function PagesScreen() {
 
   const handleRemovePage = (index: number) => {
     Alert.alert(
-      'Remover Página',
+      'Remover página',
       'Deseja remover esta página?',
       [
         { text: 'Cancelar', style: 'cancel' },
@@ -90,11 +91,24 @@ export default function PagesScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <View style={styles.container}>
+        {/* Header compacto e horizontal */}
         <View style={styles.header}>
-          <Typography variant="h2">Páginas Capturadas</Typography>
-          <Typography variant="body" style={styles.subtitle}>
-            {pages.length} {pages.length === 1 ? 'página' : 'páginas'}
-          </Typography>
+          <View style={styles.headerLeft}>
+            <View style={styles.headerIconContainer}>
+              <MaterialIcons name="photo-library" size={24} color={Colors.primary} />
+            </View>
+            <View>
+              <Typography variant="h3" color="primary">
+                Páginas capturadas
+              </Typography>
+              <View style={styles.counterContainer}>
+                <MaterialIcons name="description" size={16} color={Colors.primary} />
+                <Typography variant="body" color="primary" style={styles.counter}>
+                  {pages.length} {pages.length === 1 ? 'página' : 'páginas'}
+                </Typography>
+              </View>
+            </View>
+          </View>
         </View>
 
         <FlatList
@@ -103,10 +117,16 @@ export default function PagesScreen() {
           keyExtractor={(_, index) => `page-${index}`}
           numColumns={2}
           contentContainerStyle={styles.listContent}
+          columnWrapperStyle={styles.columnWrapper}
+          showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Typography variant="body" style={styles.emptyText}>
+              <MaterialIcons name="photo-library" size={64} color={Colors.textLight} />
+              <Typography variant="body" color="secondary" style={styles.emptyText}>
                 Nenhuma página capturada
+              </Typography>
+              <Typography variant="caption" color="secondary" style={styles.emptySubtext}>
+                Toque em "Adicionar página" para começar
               </Typography>
             </View>
           }
@@ -114,13 +134,13 @@ export default function PagesScreen() {
 
         <View style={styles.footer}>
           <Button
-            title="Adicionar Página"
+            title="Adicionar página"
             onPress={handleAddPage}
             variant="outline"
             style={styles.addButton}
           />
           <Button
-            title="Finalizar"
+            title="Finalizar e continuar"
             onPress={handleContinue}
             disabled={pages.length === 0}
             style={styles.finishButton}
@@ -134,44 +154,91 @@ export default function PagesScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: Colors.background,
   },
   container: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  subtitle: {
-    opacity: 0.7,
-    marginTop: 4,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  headerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.primaryLight + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    marginBottom: 4,
+  },
+  counterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  counter: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   listContent: {
-    gap: 12,
     paddingBottom: 16,
+  },
+  columnWrapper: {
+    gap: 12,
+    marginBottom: 12,
   },
   pageItem: {
     flex: 1,
     aspectRatio: 1 / 1.414, // A4
-    margin: 6,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: Colors.backgroundDark,
     position: 'relative',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderWidth: 2,
+    borderColor: Colors.primary + '20',
   },
   pageNumber: {
     position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    top: 10,
+    left: 10,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
     zIndex: 1,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   pageNumberText: {
     color: '#FFF',
+    fontWeight: '600',
+    fontSize: 12,
   },
   pageImage: {
     flex: 1,
@@ -180,28 +247,42 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: '#F44336',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    bottom: 10,
+    right: 10,
+    backgroundColor: Colors.error,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 48,
+    paddingVertical: 80,
+    gap: 12,
   },
   emptyText: {
-    opacity: 0.5,
+    marginTop: 16,
+    fontSize: 16,
+  },
+  emptySubtext: {
+    marginTop: 4,
+    opacity: 0.7,
   },
   footer: {
     gap: 12,
-    marginTop: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   addButton: {
     width: '100%',

@@ -24,11 +24,11 @@ export default function SelectEntityScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Container style={styles.content}>
         <Typography variant="h2" color="primary" align="center" style={styles.title}>
-          Digitalizar Documento
+          Digitalizar documento
         </Typography>
         
         <Typography variant="body" color="secondary" align="center" style={styles.subtitle}>
-          Selecione para qual entidade deseja digitalizar o documento:
+          Selecione para qual entidade deseja digitalizar o documento
         </Typography>
 
         <View style={styles.optionsContainer}>
