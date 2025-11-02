@@ -18,29 +18,61 @@ export const useDocuments = () => {
       setLoading(true);
       setError(null);
 
-      // Buscar documentos normais e institucionais em paralelo
+      // Buscar documentos normais e institucionais separadamente para tratar 403 individualmente
       // NOTA: A API retorna ARRAY direto, não objeto com paginação
-      const [normalDocs, institucionalDocs] = await Promise.all([
-        get<DocumentDTO[]>('/documentos/meus'),
-        get<InstitucionalDTO[]>('/institucional/meus')
-      ]);
+      let normalDocs: DocumentDTO[] | null = null;
+      let institucionalDocs: InstitucionalDTO[] | null = null;
+      let normalError403 = false;
+      let institucionalError403 = false;
+
+      // Buscar documentos normais
+      try {
+        normalDocs = await get<DocumentDTO[]>('/documentos/meus');
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : '';
+        if (errorMessage.includes('não tem permissão') || errorMessage.includes('403')) {
+          console.log('[fetchRecentDocuments] Sem permissão para documentos normais (403) - continuando...');
+          normalError403 = true;
+        } else {
+          throw err; // Re-lançar se não for 403
+        }
+      }
+
+      // Buscar documentos institucionais
+      try {
+        institucionalDocs = await get<InstitucionalDTO[]>('/institucional/meus');
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : '';
+        if (errorMessage.includes('não tem permissão') || errorMessage.includes('403')) {
+          console.log('[fetchRecentDocuments] Sem permissão para documentos institucionais (403) - continuando...');
+          institucionalError403 = true;
+        } else {
+          throw err; // Re-lançar se não for 403
+        }
+      }
+
+      // Se ambas retornaram 403, mostrar erro de permissão
+      if (normalError403 && institucionalError403) {
+        setError('Você não tem permissão para realizar esta ação. Contate o administrador.');
+        return [];
+      }
 
       // Converter para formato unificado
-      const normalDocuments: Document[] = (normalDocs || []).map((doc: DocumentDTO) => ({
+      const normalDocuments: Document[] = normalDocs ? (normalDocs || []).map((doc: DocumentDTO) => ({
         id: doc.id,
         titulo: doc.titulo,
         tipoDocumento: doc.tipoDocumento,
         dataUpload: doc.dataUpload,
         type: 'normal' as const
-      }));
+      })) : [];
 
-      const institucionalDocuments: Document[] = (institucionalDocs || []).map((doc: InstitucionalDTO) => ({
+      const institucionalDocuments: Document[] = institucionalDocs ? (institucionalDocs || []).map((doc: InstitucionalDTO) => ({
         id: doc.id,
         titulo: doc.titulo,
         tipoDocumento: doc.tipoDocumento,
         dataUpload: doc.dataUpload,
         type: 'institucional' as const
-      }));
+      })) : [];
 
       // Combinar e ordenar por data de upload (mais recente primeiro)
       const allDocuments = [...normalDocuments, ...institucionalDocuments];
@@ -55,7 +87,6 @@ export const useDocuments = () => {
         console.warn('[useDocuments] 401/403 recebido. Verifique token nos headers.');
       }
       setError(errorMessage);
-      console.error('Erro ao buscar documentos:', err);
       return [];
     } finally {
       setLoading(false);
@@ -74,32 +105,63 @@ export const useDocuments = () => {
 
       console.log(`[fetchAllDocuments] Buscando página ${page}...`);
 
-      // Buscar documentos normais e institucionais em paralelo
+      // Buscar documentos normais e institucionais separadamente para tratar 403 individualmente
       // NOTA: Rota /meus agora retorna Page<T> do Spring Boot
-      const [normalResponse, institucionalResponse] = await Promise.all([
-        get<{ content: DocumentDTO[], totalPages: number, totalElements: number }>(`/documentos/meus?page=${page}&size=20`),
-        get<{ content: InstitucionalDTO[], totalPages: number, totalElements: number }>(`/institucional/meus?page=${page}&size=20`)
-      ]);
+      let normalResponse: { content: DocumentDTO[], totalPages: number, totalElements: number } | null = null;
+      let institucionalResponse: { content: InstitucionalDTO[], totalPages: number, totalElements: number } | null = null;
+      let normalError403 = false;
+      let institucionalError403 = false;
 
-      console.log('[fetchAllDocuments] Resposta documentos normais:', normalResponse);
-      console.log('[fetchAllDocuments] Resposta documentos institucionais:', institucionalResponse);
+      // Buscar documentos normais
+      try {
+        normalResponse = await get<{ content: DocumentDTO[], totalPages: number, totalElements: number }>(`/documentos/meus?page=${page}&size=20`);
+        console.log('[fetchAllDocuments] Resposta documentos normais:', normalResponse);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : '';
+        if (errorMessage.includes('não tem permissão') || errorMessage.includes('403')) {
+          console.log('[fetchAllDocuments] Sem permissão para documentos normais (403) - continuando...');
+          normalError403 = true;
+        } else {
+          throw err; // Re-lançar se não for 403
+        }
+      }
+
+      // Buscar documentos institucionais
+      try {
+        institucionalResponse = await get<{ content: InstitucionalDTO[], totalPages: number, totalElements: number }>(`/institucional/meus?page=${page}&size=20`);
+        console.log('[fetchAllDocuments] Resposta documentos institucionais:', institucionalResponse);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : '';
+        if (errorMessage.includes('não tem permissão') || errorMessage.includes('403')) {
+          console.log('[fetchAllDocuments] Sem permissão para documentos institucionais (403) - continuando...');
+          institucionalError403 = true;
+        } else {
+          throw err; // Re-lançar se não for 403
+        }
+      }
+
+      // Se ambas retornaram 403, mostrar erro de permissão
+      if (normalError403 && institucionalError403) {
+        setError('Você não tem permissão para realizar esta ação. Contate o administrador.');
+        return [];
+      }
 
       // Converter para formato unificado
-      const normalDocuments: Document[] = (normalResponse.content || []).map((doc: DocumentDTO) => ({
+      const normalDocuments: Document[] = normalResponse ? (normalResponse.content || []).map((doc: DocumentDTO) => ({
         id: doc.id,
         titulo: doc.titulo,
         tipoDocumento: doc.tipoDocumento,
         dataUpload: doc.dataUpload,
         type: 'normal' as const
-      }));
+      })) : [];
 
-      const institucionalDocuments: Document[] = (institucionalResponse.content || []).map((doc: InstitucionalDTO) => ({
+      const institucionalDocuments: Document[] = institucionalResponse ? (institucionalResponse.content || []).map((doc: InstitucionalDTO) => ({
         id: doc.id,
         titulo: doc.titulo,
         tipoDocumento: doc.tipoDocumento,
         dataUpload: doc.dataUpload,
         type: 'institucional' as const
-      }));
+      })) : [];
 
       console.log('[fetchAllDocuments] Documentos normais processados:', normalDocuments.length);
       console.log('[fetchAllDocuments] Documentos institucionais processados:', institucionalDocuments.length);
@@ -109,11 +171,11 @@ export const useDocuments = () => {
       allDocuments.sort((a, b) => new Date(b.dataUpload).getTime() - new Date(a.dataUpload).getTime());
 
       console.log('[fetchAllDocuments] Total de documentos:', allDocuments.length);
-      console.log('[fetchAllDocuments] Total pages - Normal:', normalResponse.totalPages, 'Institucional:', institucionalResponse.totalPages);
+      console.log('[fetchAllDocuments] Total pages - Normal:', normalResponse?.totalPages, 'Institucional:', institucionalResponse?.totalPages);
 
       // Verificar se há mais páginas usando totalPages do Spring
-      const hasMoreNormal = page < (normalResponse.totalPages || 0) - 1;
-      const hasMoreInstitucional = page < (institucionalResponse.totalPages || 0) - 1;
+      const hasMoreNormal = normalResponse ? page < (normalResponse.totalPages || 0) - 1 : false;
+      const hasMoreInstitucional = institucionalResponse ? page < (institucionalResponse.totalPages || 0) - 1 : false;
       setHasMore(hasMoreNormal || hasMoreInstitucional);
 
       return allDocuments;
@@ -126,7 +188,6 @@ export const useDocuments = () => {
         console.warn('[useDocuments] 401/403 recebido. Verifique token nos headers.');
       }
       setError(errorMessage);
-      console.error('Erro ao buscar documentos:', err);
       return [];
     } finally {
       setLoading(false);
