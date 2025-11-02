@@ -1,0 +1,17 @@
+.tr-expanded > td {
+    padding: 0 !important;
+    border: none !important;
+}
+
+.tr-azul td {
+  text-align: center;
+}
+
+.thead-azul th {
+  color: var(--azul);
+}
+
+.form-label-sm {
+  font-size: 0.85rem;    
+  margin-bottom: 0.2rem;
+}
