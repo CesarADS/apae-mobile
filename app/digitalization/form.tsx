@@ -2,8 +2,8 @@ import { Button, Container, Typography } from '@/components';
 import { EntityType } from '@/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Vamos importar os componentes de formulário específicos
 import AlunoForm from './forms/AlunoForm';
@@ -12,6 +12,7 @@ import InstituicaoForm from './forms/InstituicaoForm';
 
 export default function DigitalizationFormScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { 
     entityType: entityTypeParam, 
     prefillData: prefillDataParam 
@@ -88,37 +89,47 @@ export default function DigitalizationFormScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }} edges={['top', 'bottom']}>
-      <Container variant="screen" style={styles.screenContainer}>
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.contentWrapper}>
-            {renderForm()}
-            
-            <View style={styles.footer}>
-              <Button
-                title="Voltar"
-                onPress={() => router.back()}
-                variant="outline"
-                style={styles.button}
-              />
-              <Button
-                title="Continuar"
-                onPress={handleContinue}
-                disabled={!isValid}
-                style={styles.button}
-              />
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+      >
+        <Container variant="screen" style={styles.screenContainer}>
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.contentWrapper}>
+              {renderForm()}
+              
+              <View style={styles.footer}>
+                <Button
+                  title="Voltar"
+                  onPress={() => router.back()}
+                  variant="outline"
+                  style={styles.button}
+                />
+                <Button
+                  title="Continuar"
+                  onPress={handleContinue}
+                  disabled={!isValid}
+                  style={styles.button}
+                />
+              </View>
             </View>
-          </View>
-        </ScrollView>
-      </Container>
+          </ScrollView>
+        </Container>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardView: {
+    flex: 1,
+  },
   screenContainer: {
     flex: 1,
   },

@@ -20,6 +20,50 @@ export default function CameraScreen() {
   const isMounted = useRef(true);
   const appState = useRef(AppState.currentState);
 
+  // Helper function para manipular imagem de forma mais segura
+  const safeManipulateImage = async (uri: string) => {
+    console.log('[safeManipulateImage] Iniciando manipulação:', uri);
+    
+    try {
+      // Tentar manipular com as configurações básicas
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 1500 } }],
+        {
+          compress: 0.9,
+          format: ImageManipulator.SaveFormat.JPEG,
+        }
+      );
+      
+      console.log('[safeManipulateImage] Sucesso:', result.uri);
+      return result;
+    } catch (error: any) {
+      console.error('[safeManipulateImage] Erro na primeira tentativa:', error.message);
+      
+      // Se falhar, tentar sem resize
+      try {
+        console.log('[safeManipulateImage] Tentando sem resize...');
+        const result = await ImageManipulator.manipulateAsync(
+          uri,
+          [],
+          {
+            compress: 0.9,
+            format: ImageManipulator.SaveFormat.JPEG,
+          }
+        );
+        
+        console.log('[safeManipulateImage] Sucesso sem resize:', result.uri);
+        return result;
+      } catch (error2: any) {
+        console.error('[safeManipulateImage] Erro na segunda tentativa:', error2.message);
+        
+        // Se ainda falhar, usar a imagem original
+        console.log('[safeManipulateImage] Usando imagem original');
+        return { uri };
+      }
+    }
+  };
+
   // Abrir scanner automaticamente ao montar o componente
   useEffect(() => {
     isMounted.current = true;
@@ -27,7 +71,12 @@ export default function CameraScreen() {
     // Pequeno delay para garantir que o componente está montado
     const timer = setTimeout(() => {
       if (isMounted.current) {
-        openScanner();
+        openScanner().catch((err) => {
+          console.error('[useEffect] Erro não tratado no openScanner:', err);
+          if (isMounted.current) {
+            router.back();
+          }
+        });
       }
     }, 300);
 
@@ -84,19 +133,38 @@ export default function CameraScreen() {
         await processAndNavigate(normalizedUri);
       } else {
         console.log('[Scanner] Escaneamento cancelado pelo usuário');
-        // Se cancelou, volta para tela anterior
+        // Se cancelou, volta para tela anterior de forma segura
         if (isMounted.current) {
           router.back();
         }
       }
     } catch (error: any) {
       console.error('[Scanner] Erro ao escanear documento:', error);
-      console.error('[Scanner] Stack trace:', error.stack);
+      console.error('[Scanner] Tipo de erro:', typeof error);
+      console.error('[Scanner] Mensagem:', error?.message);
+      console.error('[Scanner] Stack trace:', error?.stack);
       
-      if (!isMounted.current) return;
+      if (!isMounted.current) {
+        console.log('[Scanner] Componente desmontado, ignorando erro');
+        return;
+      }
       
       // Tratamento específico de erros
-      const errorMessage = error.message?.toLowerCase() || '';
+      const errorMessage = error?.message?.toLowerCase() || '';
+      const errorString = String(error).toLowerCase();
+      
+      // Verificar se é cancelamento do usuário
+      if (errorMessage.includes('cancel') || 
+          errorMessage.includes('cancelled') ||
+          errorString.includes('cancel') ||
+          errorString.includes('user') ||
+          !error.message) {
+        console.log('[Scanner] Usuário cancelou o escaneamento');
+        if (isMounted.current) {
+          router.back();
+        }
+        return;
+      }
       
       if (errorMessage.includes('permission')) {
         Alert.alert(
@@ -151,22 +219,15 @@ export default function CameraScreen() {
 
       console.log('[processAndNavigate] Manipulando imagem...');
       
-      // Processar a imagem: redimensionar levemente (SEM compressão adicional aqui)
-      // O scanner já comprimiu para 70%, não precisamos comprimir novamente
-      const manipResult = await ImageManipulator.manipulateAsync(
-        imageUri,
-        [
-          // Redimensionar moderadamente (max 1500px ao invés de 2000px)
-          { resize: { width: 1500 } },
-        ],
-        {
-          compress: 1.0, // Sem compressão adicional (scanner já fez isso)
-          format: ImageManipulator.SaveFormat.JPEG,
-          base64: false, // NÃO gera base64 aqui (economiza memória)
-        }
-      );
+      // Usar a função helper segura para manipular a imagem
+      const manipResult = await safeManipulateImage(imageUri);
 
-      console.log('[processAndNavigate] Imagem processada:', manipResult.uri);
+      // Verificar se o resultado é válido
+      if (!manipResult || !manipResult.uri) {
+        throw new Error('Falha ao processar imagem - resultado inválido');
+      }
+
+      console.log('[processAndNavigate] URI final:', manipResult.uri);
 
       // Verificar novamente se está montado
       if (!isMounted.current) {
@@ -175,7 +236,14 @@ export default function CameraScreen() {
       }
 
       // Juntar com páginas existentes se houver
-      const currentPages = existingPages ? JSON.parse(existingPages) : [];
+      let currentPages = [];
+      try {
+        currentPages = existingPages ? JSON.parse(existingPages) : [];
+      } catch (parseError) {
+        console.error('[processAndNavigate] Erro ao parsear páginas existentes:', parseError);
+        currentPages = [];
+      }
+      
       console.log('[processAndNavigate] Páginas existentes:', currentPages.length);
       
       const newPages = [
@@ -188,25 +256,37 @@ export default function CameraScreen() {
       console.log('[processAndNavigate] Total de páginas:', newPages.length);
       console.log('[processAndNavigate] Navegando para pages...');
 
-      // Navegar diretamente para pages
-      router.push({
-        pathname: './pages' as any,
-        params: {
-          entityType,
-          formData,
-          pages: JSON.stringify(newPages),
-        },
-      });
+      // Navegar diretamente para pages com try-catch
+      try {
+        router.push({
+          pathname: './pages' as any,
+          params: {
+            entityType,
+            formData,
+            pages: JSON.stringify(newPages),
+          },
+        });
+        console.log('[processAndNavigate] Navegação concluída');
+      } catch (navError: any) {
+        console.error('[processAndNavigate] Erro na navegação:', navError);
+        throw new Error('Erro ao navegar para tela de páginas');
+      }
       
-      console.log('[processAndNavigate] Navegação concluída');
     } catch (error: any) {
       console.error('[processAndNavigate] Erro ao processar imagem:', error);
+      console.error('[processAndNavigate] Mensagem:', error.message);
       console.error('[processAndNavigate] Stack trace:', error.stack);
       
       if (!isMounted.current) return;
       
       setIsProcessing(false);
-      Alert.alert('Erro', 'Não foi possível processar a imagem', [
+      
+      // Mensagem de erro mais específica
+      const errorMsg = error.message?.includes('Babel') || error.message?.includes('objectWithoutProperties')
+        ? 'Erro ao processar a imagem. Tente tirar outra foto.'
+        : 'Não foi possível processar a imagem. Tente novamente.';
+      
+      Alert.alert('Erro', errorMsg, [
         { text: 'Cancelar', onPress: () => router.back() },
         { text: 'Tentar Novamente', onPress: openScanner }
       ]);

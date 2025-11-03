@@ -28,6 +28,7 @@ interface AlunoFormData {
   alunoNome: string;
   tipoDocumento: string;
   dataDocumento: Date;
+  localizacao: string;
 }
 
 interface AlunoFormProps {
@@ -59,6 +60,7 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange, prefillData }) => {
     alunoNome: prefillData?.alunoNome || '',
     tipoDocumento: '', // Sempre limpar tipo de documento (usuário deve escolher novo)
     dataDocumento: new Date(), // Sempre data atual para novo documento
+    localizacao: prefillData?.localizacao || '',
   });
 
   // Preencher aluno selecionado se veio dos dados pré-preenchidos
@@ -187,6 +189,19 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange, prefillData }) => {
 
       {/* Card com formulário */}
       <View style={styles.formCard}>
+        {/* Localização - PRIMEIRO CAMPO */}
+        <View style={styles.field}>
+          <Typography variant="body" style={styles.label}>
+            Localização
+          </Typography>
+          <Input
+            placeholder="Digite a localização do documento..."
+            value={formData.localizacao}
+            onChangeText={(localizacao) => setFormData(prev => ({ ...prev, localizacao }))}
+            autoCapitalize="words"
+          />
+        </View>
+
         {/* Campo de busca de aluno */}
         <View style={styles.field}>
           <Typography variant="body" style={styles.label}>

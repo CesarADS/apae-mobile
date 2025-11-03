@@ -27,6 +27,7 @@ interface ColaboradorFormData {
   colaboradorNome: string;
   tipoDocumento: string;
   dataDocumento: Date;
+  localizacao: string;
 }
 
 interface ColaboradorFormProps {
@@ -60,6 +61,7 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange, prefillData
     colaboradorNome: prefillData?.colaboradorNome || '',
     tipoDocumento: '',
     dataDocumento: new Date(),
+    localizacao: prefillData?.localizacao || '',
   });
 
   // Preencher colaborador selecionado se veio dos dados pré-preenchidos
@@ -197,6 +199,19 @@ const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ onChange, prefillData
 
       {/* Card com formulário */}
       <View style={styles.formCard}>
+        {/* Localização - PRIMEIRO CAMPO */}
+        <View style={styles.field}>
+          <Typography variant="body" style={styles.label}>
+            Localização
+          </Typography>
+          <Input
+            placeholder="Digite a localização do documento..."
+            value={formData.localizacao}
+            onChangeText={(localizacao) => setFormData(prev => ({ ...prev, localizacao }))}
+            autoCapitalize="words"
+          />
+        </View>
+
         {/* Campo de busca de colaborador */}
         <View style={styles.field}>
           <Typography variant="body" style={styles.label}>

@@ -172,6 +172,7 @@ export const useDocumentUpload = () => {
         uploadFormData.append('titulo', formData.titulo);
         uploadFormData.append('tipoDocumento', formData.tipoDocumento);
         uploadFormData.append('dataDocumento', formData.dataDocumento.split('T')[0]);
+        uploadFormData.append('localizacao', formData.localizacao);
         
         uploadFormData.append('file', {
           uri: pdfUri,
@@ -184,6 +185,7 @@ export const useDocumentUpload = () => {
         
         uploadFormData.append('tipoDocumento', formData.tipoDocumento);
         uploadFormData.append('dataDocumento', formData.dataDocumento.split('T')[0]);
+        uploadFormData.append('localizacao', formData.localizacao);
         
         uploadFormData.append('file', {
           uri: pdfUri,

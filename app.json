@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "apae-mobile",
+    "name": "GED APAE",
     "slug": "apae-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -15,9 +15,7 @@
       "package": "com.apae.mobile",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/logo.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -33,7 +31,6 @@
     },
     "plugins": [
       "expo-router",
-      "react-native-document-scanner-plugin",
       [
         "expo-splash-screen",
         {

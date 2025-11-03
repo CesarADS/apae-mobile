@@ -35,6 +35,7 @@ export interface DocumentFormData {
   tipoDocumento: string;
   dataDocumento: string;
   titulo?: string; // Usado apenas para instituição
+  localizacao: string; // Localização do documento
   pages: CapturedPage[];
 }
 
@@ -44,6 +45,7 @@ export interface UploadDocumentPayload {
   dataDocumento: string;
   file: string; // Base64
   titulo?: string; // Apenas para instituição
+  localizacao: string; // Localização do documento
 }
 
 export interface UploadResponse {

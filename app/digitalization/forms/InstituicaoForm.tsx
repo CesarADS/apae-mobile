@@ -20,6 +20,7 @@ interface InstituicaoFormData {
   titulo: string;
   tipoDocumento: string;
   dataDocumento: Date;
+  localizacao: string;
 }
 
 interface InstituicaoFormProps {
@@ -48,6 +49,7 @@ const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange, prefillData
     titulo: prefillData?.titulo || '',
     tipoDocumento: '',
     dataDocumento: new Date(),
+    localizacao: prefillData?.localizacao || '',
   });
 
   // Buscar tipos de documento de INSTITUIÇÃO
@@ -113,6 +115,19 @@ const InstituicaoForm: React.FC<InstituicaoFormProps> = ({ onChange, prefillData
 
       {/* Card com formulário */}
       <View style={styles.formCard}>
+        {/* Localização - PRIMEIRO CAMPO */}
+        <View style={styles.field}>
+          <Typography variant="body" style={styles.label}>
+            Localização
+          </Typography>
+          <Input
+            placeholder="Digite a localização do documento..."
+            value={formData.localizacao}
+            onChangeText={(localizacao) => setFormData(prev => ({ ...prev, localizacao }))}
+            autoCapitalize="words"
+          />
+        </View>
+
         {/* Campo de título */}
         <View style={styles.field}>
           <Typography variant="body" style={styles.label}>
