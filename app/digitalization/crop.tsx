@@ -3,7 +3,7 @@ import { EntityType } from '@/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,6 +20,14 @@ export default function CropScreen() {
 
   const [processing, setProcessing] = useState(false);
   const [currentImageUri, setCurrentImageUri] = useState<string>(imageUri);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // Validação inicial
   if (!imageUri) {
@@ -31,6 +39,7 @@ export default function CropScreen() {
   }
 
   const handleConfirm = async () => {
+    if (!isMounted.current) return;
     setProcessing(true);
 
     try {
@@ -49,6 +58,9 @@ export default function CropScreen() {
           base64: true,
         }
       );
+
+      // Proteger setState após unmount
+      if (!isMounted.current) return;
 
       console.log('Imagem processada com sucesso');
 
@@ -75,6 +87,10 @@ export default function CropScreen() {
       });
     } catch (error) {
       console.error('Erro ao processar imagem:', error);
+      
+      // Proteger setState após unmount
+      if (!isMounted.current) return;
+      
       Alert.alert('Erro', 'Não foi possível processar a imagem');
       setProcessing(false);
     }

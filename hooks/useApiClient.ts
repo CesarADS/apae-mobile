@@ -9,12 +9,45 @@ if (!API_BASE_URL_RAW) {
 
 const API_BASE_URL = API_BASE_URL_RAW;
 
+// Configurações de retry e timeout
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000; // 1 segundo entre tentativas
+const REQUEST_TIMEOUT_MS = 30000; // 30 segundos
+
 interface RequestOptions extends RequestInit {}
 
 interface UseApiClientOptions {
   baseURL?: string;
   initialToken?: string | null;
 }
+
+/**
+ * Helper para adicionar timeout em fetch
+ */
+const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs: number): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Tempo limite de requisição excedido. Verifique sua conexão.');
+    }
+    throw error;
+  }
+};
+
+/**
+ * Helper para aguardar um delay
+ */
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
 export const useApiClient = (options: UseApiClientOptions = {}) => {
   const baseURL = options.baseURL || API_BASE_URL;
@@ -49,7 +82,7 @@ export const useApiClient = (options: UseApiClientOptions = {}) => {
     return headers;
   }, []);
 
-  const request = useCallback(async <T,>(endpoint: string, options: RequestOptions = {}): Promise<T> => {
+  const request = useCallback(async <T,>(endpoint: string, options: RequestOptions = {}, retryCount = 0): Promise<T> => {
     const url = `${baseURL}${endpoint}`;
     
     // Detectar se é FormData para não adicionar Content-Type
@@ -62,6 +95,7 @@ export const useApiClient = (options: UseApiClientOptions = {}) => {
     console.log('[API Client] Token disponível:', token ? 'SIM' : 'NÃO');
     console.log('[API Client] Endpoint:', endpoint);
     console.log('[API Client] É FormData:', isFormData);
+    console.log('[API Client] Tentativa:', retryCount + 1, 'de', MAX_RETRIES);
     
     if (token) {
       headers.Authorization = `Bearer ${token}`;
@@ -91,20 +125,20 @@ export const useApiClient = (options: UseApiClientOptions = {}) => {
     
     try {
       console.log('[API Client] Fazendo fetch para:', url);
-      const response = await fetch(url, config);
+      const response = await fetchWithTimeout(url, config, REQUEST_TIMEOUT_MS);
       console.log('[API Client] Response status:', response.status);
       console.log('[API Client] Response ok:', response.ok);
       
       if (!response.ok) {
         if (response.status === 401) {
-          // Token expirado ou inválido
+          // Token expirado ou inválido - NÃO fazer retry
           console.log('[API Client] ❌ Token inválido ou expirado (401)');
           setGlobalToken(null);
           throw new Error('Sua sessão expirou. Por favor, faça login novamente.');
         }
         
         if (response.status === 403) {
-          // Autenticado mas sem permissão
+          // Autenticado mas sem permissão - NÃO fazer retry
           console.log('[API Client] ❌ Acesso negado (403) - Sem permissão');
           const errorText = await response.text().catch(() => '');
           console.log('[API Client] ❌ Detalhe do erro 403:', errorText);
@@ -127,7 +161,31 @@ export const useApiClient = (options: UseApiClientOptions = {}) => {
         }
         throw new Error('Resposta inválida do servidor');
       }
-    } catch (err) {
+    } catch (err: any) {
+      const errorMessage = err?.message || String(err);
+      
+      // Verificar se é erro de rede/timeout e se ainda pode fazer retry
+      const isNetworkError = errorMessage.includes('Network request failed') || 
+                            errorMessage.includes('Tempo limite') ||
+                            errorMessage.includes('Failed to fetch');
+      
+      const isAuthError = errorMessage.includes('sessão expirou') || 
+                         errorMessage.includes('login novamente');
+      
+      // Se for erro de autenticação ou já tentou MAX_RETRIES vezes, não tenta novamente
+      if (isAuthError || retryCount >= MAX_RETRIES - 1) {
+        console.error('[API Client] ❌ Erro final após', retryCount + 1, 'tentativa(s):', errorMessage);
+        throw err;
+      }
+      
+      // Se for erro de rede, tentar novamente
+      if (isNetworkError) {
+        console.warn(`[API Client] ⚠️ Erro de rede. Tentando novamente em ${RETRY_DELAY_MS}ms... (${retryCount + 1}/${MAX_RETRIES})`);
+        await sleep(RETRY_DELAY_MS * (retryCount + 1)); // Backoff exponencial
+        return request<T>(endpoint, options, retryCount + 1);
+      }
+      
+      // Para outros erros, lançar imediatamente
       throw err;
     }
   }, [baseURL, getHeaders]);

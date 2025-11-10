@@ -3,7 +3,7 @@ import { useDocumentUpload } from '@/hooks';
 import { CapturedPage, EntityType } from '@/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,10 +19,16 @@ export default function UploadScreen() {
   const [uploadComplete, setUploadComplete] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const isMounted = useRef(true);
 
   useEffect(() => {
+    isMounted.current = true;
     // Iniciar upload automaticamente ao montar
     handleUpload();
+    
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   const handleUpload = async () => {
@@ -41,6 +47,9 @@ export default function UploadScreen() {
         pages,
       });
 
+      // Proteger setState após unmount
+      if (!isMounted.current) return;
+
       setUploadComplete(true);
       setUploadSuccess(result.success);
 
@@ -49,6 +58,10 @@ export default function UploadScreen() {
       }
     } catch (error: any) {
       console.error('Erro no upload:', error);
+      
+      // Proteger setState após unmount
+      if (!isMounted.current) return;
+      
       setUploadComplete(true);
       setUploadSuccess(false);
       setErrorMessage(error.message || 'Erro ao processar dados');

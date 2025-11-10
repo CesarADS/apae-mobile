@@ -7,6 +7,9 @@ import React, { useState } from 'react';
 import { Alert, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// Limite máximo de páginas por documento
+const MAX_PAGES = 20;
+
 export default function PagesScreen() {
   const router = useRouter();
   const { entityType, formData, pages: pagesParam } = useLocalSearchParams<{
@@ -20,6 +23,16 @@ export default function PagesScreen() {
   );
 
   const handleAddPage = () => {
+    // Validar limite de páginas
+    if (pages.length >= MAX_PAGES) {
+      Alert.alert(
+        'Limite atingido',
+        `Você atingiu o limite máximo de ${MAX_PAGES} páginas por documento.\n\nPara documentos maiores, considere dividi-los em múltiplos uploads.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
     // Voltar para a câmera para capturar mais uma página
     router.push({
       pathname: './camera' as any,
@@ -104,7 +117,7 @@ export default function PagesScreen() {
               <View style={styles.counterContainer}>
                 <MaterialIcons name="description" size={16} color={Colors.primary} />
                 <Typography variant="body" color="primary" style={styles.counter}>
-                  {pages.length} {pages.length === 1 ? 'página' : 'páginas'}
+                  {pages.length} de {MAX_PAGES} {pages.length === 1 ? 'página' : 'páginas'}
                 </Typography>
               </View>
             </View>
@@ -138,6 +151,7 @@ export default function PagesScreen() {
             onPress={handleAddPage}
             variant="outline"
             style={styles.addButton}
+            disabled={pages.length >= MAX_PAGES}
           />
           <Button
             title="Finalizar e continuar"

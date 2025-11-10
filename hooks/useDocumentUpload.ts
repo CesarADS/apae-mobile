@@ -5,6 +5,9 @@ import * as Print from 'expo-print';
 import { useState } from 'react';
 import { useApiClient } from './useApiClient';
 
+// Limite máximo de páginas por documento
+const MAX_PAGES = 20;
+
 interface UploadDocumentParams {
   entityType: EntityType;
   formData: any;
@@ -26,10 +29,14 @@ export const useDocumentUpload = () => {
   const generatePDFFromImages = async (pages: CapturedPage[]): Promise<string> => {
     setProgressMessage('Processando imagens...');
     
-    const compressedImages = await Promise.all(
-      pages.map(async (page, index) => {
-        setProgressMessage(`Comprimindo imagem ${index + 1}/${pages.length}...`);
-        
+    // Processar imagens SEQUENCIALMENTE para evitar sobrecarga de memória
+    const compressedImages: string[] = [];
+    
+    for (let index = 0; index < pages.length; index++) {
+      const page = pages[index];
+      setProgressMessage(`Comprimindo imagem ${index + 1}/${pages.length}...`);
+      
+      try {
         const compressed = await ImageManipulator.manipulateAsync(
           page.uri,
           [{ resize: { width: 1200 } }],
@@ -39,20 +46,32 @@ export const useDocumentUpload = () => {
           }
         );
         
-        return compressed.uri;
-      })
-    );
+        compressedImages.push(compressed.uri);
+      } catch (error) {
+        console.error(`[generatePDF] Erro ao comprimir imagem ${index + 1}:`, error);
+        throw new Error(`Falha ao processar imagem ${index + 1}. Tente novamente.`);
+      }
+    }
 
     setProgressMessage('Convertendo para PDF...');
     
-    const imagesBase64 = await Promise.all(
-      compressedImages.map(async (uri) => {
+    // Converter para base64 SEQUENCIALMENTE
+    const imagesBase64: string[] = [];
+    
+    for (let i = 0; i < compressedImages.length; i++) {
+      const uri = compressedImages[i];
+      setProgressMessage(`Convertendo imagem ${i + 1}/${compressedImages.length} para PDF...`);
+      
+      try {
         const base64 = await FileSystem.readAsStringAsync(uri, {
           encoding: 'base64',
         });
-        return `data:image/jpeg;base64,${base64}`;
-      })
-    );
+        imagesBase64.push(`data:image/jpeg;base64,${base64}`);
+      } catch (error) {
+        console.error(`[generatePDF] Erro ao converter imagem ${i + 1} para base64:`, error);
+        throw new Error(`Falha ao converter imagem ${i + 1}. Tente novamente.`);
+      }
+    }
 
     setProgressMessage('Gerando PDF...');
     
@@ -125,11 +144,16 @@ export const useDocumentUpload = () => {
 
     const { uri } = await Print.printToFileAsync({ html });
     
-    await Promise.all(
-      compressedImages.map((uri) =>
-        FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {})
-      )
-    );
+    // Limpar imagens temporárias comprimidas SEQUENCIALMENTE
+    setProgressMessage('Limpando arquivos temporários...');
+    for (const tempUri of compressedImages) {
+      try {
+        await FileSystem.deleteAsync(tempUri, { idempotent: true });
+      } catch (error) {
+        console.warn(`[generatePDF] Falha ao deletar arquivo temporário ${tempUri}:`, error);
+        // Não interromper o processo se falhar ao deletar temporários
+      }
+    }
     
     return uri;
   };
@@ -144,6 +168,15 @@ export const useDocumentUpload = () => {
     setProgressMessage('Iniciando processo...');
 
     try {
+      // Validar número de páginas
+      if (pages.length === 0) {
+        throw new Error('Nenhuma página para processar');
+      }
+      
+      if (pages.length > MAX_PAGES) {
+        throw new Error(`Limite de ${MAX_PAGES} páginas excedido. Você tem ${pages.length} páginas.`);
+      }
+      
       setProgress(10);
       const pdfUri = await generatePDFFromImages(pages);
       setProgress(60);
