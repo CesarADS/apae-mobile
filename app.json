@@ -13,6 +13,7 @@
     },
     "android": {
       "package": "com.apae.mobile",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#005484",
         "foregroundImage": "./assets/images/logo.png"
@@ -55,6 +56,6 @@
         "projectId": "03da31a4-f750-4989-b14c-f22b645c1673"
       }
     },
-    "owner": "cesarads"
+    "owner": "gestaoapae"
   }
 }
