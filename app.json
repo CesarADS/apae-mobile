@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "apaemobile",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
@@ -14,7 +14,7 @@
     "android": {
       "package": "com.apae.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#005484",
         "foregroundImage": "./assets/images/logo.png"
       },
       "edgeToEdgeEnabled": true,
@@ -31,15 +31,16 @@
     },
     "plugins": [
       "expo-router",
+      "expo-secure-store",
       [
         "expo-splash-screen",
         {
           "image": "./assets/images/logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#005484",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#005484"
           }
         }
       ]
@@ -48,7 +49,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiBaseUrl": "https://turbo-system-4j77g659vrvp3jjq4-8080.app.github.dev/api",
+      "apiBaseUrl": "API_BASE_URL=https://gedapae.com.br/api",
       "router": {},
       "eas": {
         "projectId": "03da31a4-f750-4989-b14c-f22b645c1673"

@@ -1,4 +1,4 @@
-import React, { createContext, ReactNode, useContext, useState } from 'react';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { useApiClient } from '../hooks/useApiClient';
 import { AuthState } from '../types/auth';
 import {
@@ -7,6 +7,7 @@ import {
     hasMinimumPermissions,
     isTokenExpired
 } from '../utils/permissions';
+import { clearAuthData, getToken, getUserData, saveToken, saveUserData } from '../utils/secureStorage';
 
 interface AuthContextType extends AuthState {
   email: string;
@@ -16,6 +17,7 @@ interface AuthContextType extends AuthState {
   login: (credentials?: { email: string; password: string }) => Promise<boolean>;
   logout: () => Promise<void>;
   clearError: () => void;
+  isInitializing: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +26,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const api = useApiClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isInitializing, setIsInitializing] = useState(true);
   const [state, setState] = useState<AuthState>({
     isAuthenticated: false,
     user: null,
@@ -31,6 +34,66 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     loading: false,
     error: null,
   });
+
+  // Auto-login: Tenta restaurar sessão ao iniciar o app
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        console.log('[AUTH] Tentando restaurar sessão...');
+        const savedToken = await getToken();
+        const savedUserData = await getUserData();
+
+        if (!savedToken || !savedUserData) {
+          console.log('[AUTH] Nenhuma sessão salva encontrada');
+          setIsInitializing(false);
+          return;
+        }
+
+        // Verificar se o token ainda é válido
+        if (isTokenExpired(savedToken)) {
+          console.log('[AUTH] Token expirado, limpando sessão');
+          await clearAuthData();
+          setIsInitializing(false);
+          return;
+        }
+
+        // Decodificar token para obter informações
+        const decodedToken = decodeToken(savedToken);
+        if (!decodedToken || !decodedToken.permissions) {
+          console.log('[AUTH] Token inválido, limpando sessão');
+          await clearAuthData();
+          setIsInitializing(false);
+          return;
+        }
+
+        // Restaurar sessão
+        console.log('[AUTH] Sessão restaurada com sucesso!');
+        api.setToken(savedToken);
+
+        const userPermissions = canAccessMobileApp(decodedToken.permissions);
+
+        setState({
+          isAuthenticated: true,
+          user: savedUserData,
+          data: {
+            token: savedToken,
+            expiresAt: new Date(decodedToken.exp * 1000).toISOString(),
+            permissions: decodedToken.permissions,
+            userPermissions: userPermissions,
+          },
+          loading: false,
+          error: null,
+        });
+      } catch (error) {
+        console.error('[AUTH] Erro ao restaurar sessão:', error);
+        await clearAuthData();
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    restoreSession();
+  }, []);
 
   const clearError = () => {
     setState(prev => ({ ...prev, error: null }));
@@ -122,16 +185,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       console.log('[AUTH] Nome/Email original:', fullName);
       console.log('[AUTH] Nome para exibição:', firstName);
+
+      const userData = {
+        id: decodedToken.sub,
+        name: firstName,
+        email: loginEmail,
+        permissions: decodedToken.permissions,
+      };
+
+      // Salvar token e dados do usuário no armazenamento seguro
+      await saveToken(result.token);
+      await saveUserData(userData);
+      console.log('[AUTH] Token e dados do usuário salvos no armazenamento seguro');
       
       setState(prev => ({
         ...prev,
         isAuthenticated: true,
-        user: {
-          id: decodedToken.sub,
-          name: firstName, // ← Usando primeiro nome ou parte do email
-          email: loginEmail,
-          permissions: decodedToken.permissions,
-        },
+        user: userData,
         data: {
           token: result.token,
           expiresAt: new Date(decodedToken.exp * 1000).toISOString(),
@@ -156,8 +226,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async (): Promise<void> => {
-    // Limpar o token
+    // Limpar o token e armazenamento seguro
     api.setToken(null);
+    await clearAuthData();
+    console.log('[AUTH] Logout realizado, dados limpos do armazenamento seguro');
     
     setState({
       isAuthenticated: false,
@@ -179,6 +251,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     login,
     logout,
     clearError,
+    isInitializing,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

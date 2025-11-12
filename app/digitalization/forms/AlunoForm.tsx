@@ -267,6 +267,7 @@ const AlunoForm: React.FC<AlunoFormProps> = ({ onChange, prefillData }) => {
               selectedValue={formData.tipoDocumento}
               onValueChange={(value: string) => setFormData(prev => ({ ...prev, tipoDocumento: value }))}
               style={styles.picker}
+              dropdownIconColor="#000"
             >
               <Picker.Item label="Selecione o tipo..." value="" />
               {tiposDocumento.map(tipo => (
@@ -355,6 +356,7 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 56,
+    color: '#000', // Cor do texto sempre preta
   },
   loader: {
     marginTop: 8,
