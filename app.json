@@ -33,6 +33,7 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-web-browser",
       [
         "expo-splash-screen",
         {
@@ -50,10 +51,10 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiBaseUrl": "API_BASE_URL=https://gedapae.com.br/api",
+      "apiBaseUrl": "https://gedapae.com.br/api",
       "router": {},
       "eas": {
-        "projectId": "03da31a4-f750-4989-b14c-f22b645c1673"
+        "projectId": "caa571da-4a09-414d-be6b-89bf480498bb"
       }
     },
     "owner": "gestaoapae"

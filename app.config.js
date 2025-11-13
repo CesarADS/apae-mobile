@@ -1,14 +1,14 @@
 import 'dotenv/config';
 
 export default ({ config }) => {
-  if (!process.env.API_BASE_URL) {
-    throw new Error('Variável de ambiente API_BASE_URL não definida. Crie um arquivo .env com API_BASE_URL.');
-  }
+  // Usar variável de ambiente ou valor padrão de produção
+  const apiBaseUrl = process.env.API_BASE_URL || 'https://gedapae.com.br/api';
+  
   return {
     ...config,
     extra: {
       ...(config.extra || {}),
-      apiBaseUrl: process.env.API_BASE_URL,
+      apiBaseUrl,
     },
   };
 };
