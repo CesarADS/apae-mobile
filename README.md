@@ -225,7 +225,6 @@ apae-mobile/
 - ✅ Limite de 20 páginas por documento
 - ✅ Compressão otimizada de imagens
 - ✅ Limpeza automática de arquivos temporários
-- ✅ Remoção de pastas desnecessárias (back/ e front/)
 
 ### **UX/UI**
 - ✅ Tema claro fixo (sem mudanças automáticas)
